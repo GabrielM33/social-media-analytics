@@ -19,19 +19,30 @@ export async function GET(request: Request) {
     }
 
     const response = await youtube.videos.list({
-      part: ["statistics"],
+      part: ["statistics", "snippet"],
       id: [videoId],
     });
 
-    if (!response.data.items?.[0]?.statistics) {
+    if (!response.data.items?.[0]) {
       return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
-    const views = response.data.items[0].statistics.viewCount;
+    const { statistics, snippet } = response.data.items[0];
+
+    if (!statistics) {
+      return NextResponse.json({ error: "Statistics not found" }, { status: 404 });
+    }
+
+    const data = {
+      title: snippet?.title || "",
+      views: statistics.viewCount || "0",
+      likes: statistics.likeCount || "0",
+      comments: statistics.commentCount || "0"
+    };
 
     // Cache the response for 1 hour
     return NextResponse.json(
-      { views },
+      data,
       {
         headers: {
           "Cache-Control":
@@ -42,9 +53,8 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("YouTube API Error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch video views" },
+      { error: "Failed to fetch video data" },
       { status: 500 }
-      // add hot toast
     );
   }
 }
