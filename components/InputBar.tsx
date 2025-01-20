@@ -92,7 +92,7 @@ export default function InputBar() {
           disabled={isLoading}
           onClick={() => console.log("Button clicked")}
         >
-          {isLoading ? "Loading..." : "Analyze"}
+          {isLoading ? "Loading..." : "Confirm"}
         </Button>
       </form>
       {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
