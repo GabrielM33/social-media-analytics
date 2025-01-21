@@ -1,5 +1,8 @@
-import YoutubeData from "@/components/YoutubeData";
 import InputBar from "@/components/InputBar";
+import AggregateData from "@/components/AggregateData";
+import YoutubeData from "@/components/YoutubeData";
+import InstagramData from "@/components/InstagramData";
+// import TikTokData from "@/components/TikTokData";
 
 export default function Home() {
   return (
@@ -10,8 +13,13 @@ export default function Home() {
       </h1>
       <div className="p-10">
         <InputBar />
+        <AggregateData />
       </div>
-      <YoutubeData />
+      <div className="flex flex-row items-center">
+        <YoutubeData />
+        <InstagramData videoId="your_instagram_video_id" />
+        {/*<TikTokData /> */}
+      </div>
     </div>
   );
 }
