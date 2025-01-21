@@ -16,7 +16,7 @@ export default function YoutubeData({
   videoId?: string;
 }) {
   const [stats, setStats] = useState<VideoStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,7 +34,9 @@ export default function YoutubeData({
 
         setStats(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch video stats");
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch video stats"
+        );
       } finally {
         setLoading(false);
       }
@@ -63,7 +65,7 @@ export default function YoutubeData({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 max-w-sm w-full">
+    <div className="rounded-xl shadow-lg p-6 max-w-sm w-full">
       <h2 className="text-lg font-semibold mb-4 truncate" title={stats.title}>
         {stats.title}
       </h2>
@@ -85,6 +87,13 @@ export default function YoutubeData({
           <div className="font-semibold">
             {Number(stats.comments).toLocaleString()}
           </div>
+        </div>
+      </div>
+      <div className="mt-4">
+        <div className="text-sm text-gray-500">Comments</div>
+        <div className="font-semibold">
+          {/* TODO: Add top 5 comments */}
+          {stats.comments}
         </div>
       </div>
     </div>
