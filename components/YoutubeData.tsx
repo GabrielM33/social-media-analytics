@@ -7,8 +7,17 @@ interface VideoStats {
   views: string;
   likes: string;
   comments: string;
+  top_comments: Array<{
+    id: string;
+    text: string;
+    author: string;
+    likeCount: number;
+    publishedAt: string;
+  }>;
   error?: string;
 }
+
+const formatNumber = (num: number) => num.toLocaleString();
 
 export default function YoutubeData({
   videoId = "dQw4w9WgXcQ",
@@ -69,32 +78,37 @@ export default function YoutubeData({
       <h2 className="text-lg font-semibold mb-4 truncate" title={stats.title}>
         {stats.title}
       </h2>
-      <div className="grid grid-cols-3 gap-4">
-        <div className="text-center">
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div>
           <div className="text-sm text-gray-500">Views</div>
           <div className="font-semibold">
-            {Number(stats.views).toLocaleString()}
+            {formatNumber(parseInt(stats.views))}
           </div>
         </div>
-        <div className="text-center">
+        <div>
           <div className="text-sm text-gray-500">Likes</div>
           <div className="font-semibold">
-            {Number(stats.likes).toLocaleString()}
-          </div>
-        </div>
-        <div className="text-center">
-          <div className="text-sm text-gray-500">Comments</div>
-          <div className="font-semibold">
-            {Number(stats.comments).toLocaleString()}
+            {formatNumber(parseInt(stats.likes))}
           </div>
         </div>
       </div>
-      <div className="mt-4">
-        <div className="text-sm text-gray-500">Comments</div>
-        <div className="font-semibold">
-          {/* TODO: Add top 5 comments */}
-          {stats.comments}
-        </div>
+
+      <div className="space-y-4">
+        <div className="text-sm text-gray-500 font-medium">Top Comments</div>
+        {stats.top_comments.map((comment) => (
+          <div key={comment.id} className="border-b border-gray-100 pb-3">
+            <div className="flex items-start justify-between">
+              <div className="font-medium text-sm">{comment.author}</div>
+              <div className="text-xs text-gray-500">
+                {new Date(comment.publishedAt).toLocaleDateString()}
+              </div>
+            </div>
+            <div className="text-sm mt-1">{comment.text}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {formatNumber(comment.likeCount)} likes
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
