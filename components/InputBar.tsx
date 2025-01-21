@@ -61,7 +61,11 @@ export default function InputBar() {
         urlObj.hostname === "www.youtube.com" ||
         urlObj.hostname === "youtube.com"
       ) {
-        videoId = urlObj.searchParams.get("v");
+        if (urlObj.pathname.startsWith('/shorts/')) {
+          videoId = urlObj.pathname.split('/shorts/')[1];
+        } else {
+          videoId = urlObj.searchParams.get("v");
+        }
       }
 
       console.log("Parsed URL:", urlObj.toString());
@@ -79,7 +83,7 @@ export default function InputBar() {
       <form onSubmit={handleUrlSubmit} className="flex gap-2">
         <Input
           type="url"
-          placeholder="Paste YouTube, Instagram, or TikTok URL"
+          placeholder="Enter video URL"
           value={url}
           onChange={(e) => {
             console.log("Input changed:", e.target.value);
