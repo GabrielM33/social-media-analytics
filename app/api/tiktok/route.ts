@@ -16,23 +16,49 @@ interface TikTokMetrics {
 
 // First step: Get the authorization URL
 export function GET() {
-  const authUrl =
-    `https://www.tiktok.com/v2/auth/authorize?` +
-    new URLSearchParams({
-      client_key: process.env.TIKTOK_CLIENT_KEY!,
-      redirect_uri: REDIRECT_URI,
-      scope: "video.list,user.info.basic",
-      response_type: "code",
-      state: Math.random().toString(36).substring(7),
+  try {
+    if (!process.env.TIKTOK_CLIENT_KEY) {
+      console.error("Missing TIKTOK_CLIENT_KEY");
+      return NextResponse.json(
+        { error: "TikTok API configuration error" },
+        { status: 500 }
+      );
+    }
+
+    const authUrl =
+      `https://www.tiktok.com/v2/auth/authorize?` +
+      new URLSearchParams({
+        client_key: process.env.TIKTOK_CLIENT_KEY,
+        redirect_uri: REDIRECT_URI,
+        scope: "video.list,user.info.basic",
+        response_type: "code",
+        state: Math.random().toString(36).substring(7),
+      });
+
+    console.log("Auth URL generated:", {
+      clientKey: process.env.TIKTOK_CLIENT_KEY,
+      redirectUri: REDIRECT_URI,
     });
 
-  return NextResponse.json({ authUrl });
+    return NextResponse.json({ authUrl });
+  } catch (error) {
+    console.error("Error generating auth URL:", error);
+    return NextResponse.json(
+      { error: "Failed to initialize TikTok authentication" },
+      { status: 500 }
+    );
+  }
 }
 
 // Second step: Exchange code for access token
 async function getAccessToken(code: string): Promise<string> {
   try {
-    console.log("Getting access token with code:", code);
+    console.log("Getting access token with:", {
+      code,
+      redirectUri: REDIRECT_URI,
+      clientKey: process.env.TIKTOK_CLIENT_KEY,
+    });
+
     const response = await axios.post(
       `${TIKTOK_API_URL}/oauth/token/`,
       {
@@ -52,8 +78,14 @@ async function getAccessToken(code: string): Promise<string> {
     console.log("Token response:", response.data);
     return response.data.access_token;
   } catch (error: any) {
-    console.error("Token error:", error.response?.data || error);
-    throw error;
+    console.error("Token error:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+    });
+    throw new Error(
+      error.response?.data?.error?.message || "Failed to get access token"
+    );
   }
 }
 
@@ -84,9 +116,14 @@ async function getVideoMetrics(videoId: string, accessToken: string) {
       likeCount: video.statistics.like_count,
       commentCount: video.statistics.comment_count,
       thumbnail: video.cover_url,
+      topComments: [], // TikTok API doesn't provide comments in v2
     };
   } catch (error: any) {
-    console.error("Video metrics error:", error.response?.data || error);
+    console.error("Video metrics error:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+    });
     throw error;
   }
 }
@@ -116,7 +153,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json(metrics);
   } catch (error: any) {
-    console.error("Error:", error.response?.data || error);
+    console.error("Error:", {
+      message: error.message,
+      response: error.response?.data,
+      stack: error.stack,
+    });
     return NextResponse.json(
       { error: error.response?.data?.error?.message || "API Error" },
       { status: error.response?.status || 500 }
