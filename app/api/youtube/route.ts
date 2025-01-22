@@ -57,6 +57,7 @@ export async function GET(request: Request) {
       title: snippet?.title || "",
       views: statistics.viewCount || "0",
       likes: statistics.likeCount || "0",
+      comments: String(statistics.commentCount || 0),
       top_comments: comments,
     };
 

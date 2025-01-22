@@ -78,7 +78,7 @@ export default function YoutubeData({
       <h2 className="text-lg font-semibold mb-4 truncate" title={stats.title}>
         {stats.title}
       </h2>
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-6">
         <div>
           <div className="text-sm text-gray-500">Views</div>
           <div className="font-semibold">
@@ -89,6 +89,12 @@ export default function YoutubeData({
           <div className="text-sm text-gray-500">Likes</div>
           <div className="font-semibold">
             {formatNumber(parseInt(stats.likes))}
+          </div>
+        </div>
+        <div>
+          <div className="text-sm text-gray-500">Comments</div>
+          <div className="font-semibold">
+            {formatNumber(parseInt(stats.comments))}
           </div>
         </div>
       </div>

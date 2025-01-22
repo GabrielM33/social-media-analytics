@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, Suspense } from "react";
+// import { Suspense } from "react";
 import InputBarYoututbe from "@/components/InputBarYoututbe";
-import InputBarTikTok from "@/components/InputBarTikTok";
 import YoutubeData from "@/components/YoutubeData";
-import TikTokData from "@/components/TikTokData";
+//import InputBarTikTok from "@/components/InputBarTikTok";
+// import TikTokData from "@/components/TikTokData";
 import AggregateData from "@/components/AggregateData";
 
+/*
 interface TikTokMetrics {
   viewCount: number;
   likeCount: number;
@@ -18,12 +19,14 @@ interface TikTokMetrics {
     likeCount: number;
   }>;
 }
+*/
 
 export default function Home() {
-  const [tiktokData, setTiktokData] = useState<TikTokMetrics | null>(null);
-  const [isTikTokLoading, setIsTikTokLoading] = useState(false);
-  const [tiktokError, setTiktokError] = useState<string | null>(null);
+  //const [tiktokData, setTiktokData] = useState<TikTokMetrics | null>(null);
+  //const [isTikTokLoading, setIsTikTokLoading] = useState(false);
+  //const [tiktokError, setTiktokError] = useState<string | null>(null);
 
+  /*  
   const handleTikTokSubmit = async (url: string) => {
     setIsTikTokLoading(true);
     setTiktokError(null);
@@ -51,6 +54,7 @@ export default function Home() {
       setIsTikTokLoading(false);
     }
   };
+*/
 
   return (
     <div className="flex flex-col items-center justify-center py-10">
@@ -59,7 +63,7 @@ export default function Home() {
       </h1>
       <div className="p-10 w-full max-w-4xl">
         <div className="space-y-8">
-          {/* TikTok Section */}
+          {/* TikTok Section 
           <Suspense
             fallback={
               <section>
@@ -75,21 +79,24 @@ export default function Home() {
           >
             <section>
               <h2 className="text-2xl font-semibold mb-4">TikTok Analytics</h2>
+              
               <InputBarTikTok
                 onSubmit={handleTikTokSubmit}
                 isLoading={isTikTokLoading}
               />
+              
+              
               <TikTokData
                 data={tiktokData}
                 isLoading={isTikTokLoading}
                 error={tiktokError || undefined}
               />
             </section>
+            
           </Suspense>
-
+          */}
           {/* YouTube Section */}
           <section>
-            <h2 className="text-2xl font-semibold mb-4">YouTube Analytics</h2>
             <InputBarYoututbe />
             <YoutubeData />
           </section>
