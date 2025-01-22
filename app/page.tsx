@@ -88,7 +88,12 @@ export default function Home() {
               {/* TikTok content will be enabled when authentication is implemented */}
             </section>
           )}
-
+          <div className="flex justify-center">
+            <span className="text-gray-500 py-4">
+              Note: Waiting for TikTok Approval, currently only YouTube is
+              supported.
+            </span>
+          </div>
           {/* YouTube Section */}
           <section>
             <InputBarYoututbe />
