@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import InputBarYoututbe from "@/components/InputBarYoututbe";
 import InputBarTikTok from "@/components/InputBarTikTok";
 import YoutubeData from "@/components/YoutubeData";
@@ -60,18 +60,32 @@ export default function Home() {
       <div className="p-10 w-full max-w-4xl">
         <div className="space-y-8">
           {/* TikTok Section */}
-          <section>
-            <h2 className="text-2xl font-semibold mb-4">TikTok Analytics</h2>
-            <InputBarTikTok
-              onSubmit={handleTikTokSubmit}
-              isLoading={isTikTokLoading}
-            />
-            <TikTokData
-              data={tiktokData}
-              isLoading={isTikTokLoading}
-              error={tiktokError || undefined}
-            />
-          </section>
+          <Suspense
+            fallback={
+              <section>
+                <h2 className="text-2xl font-semibold mb-4">
+                  TikTok Analytics
+                </h2>
+                <div className="animate-pulse space-y-4">
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="h-40 bg-gray-200 rounded"></div>
+                </div>
+              </section>
+            }
+          >
+            <section>
+              <h2 className="text-2xl font-semibold mb-4">TikTok Analytics</h2>
+              <InputBarTikTok
+                onSubmit={handleTikTokSubmit}
+                isLoading={isTikTokLoading}
+              />
+              <TikTokData
+                data={tiktokData}
+                isLoading={isTikTokLoading}
+                error={tiktokError || undefined}
+              />
+            </section>
+          </Suspense>
 
           {/* YouTube Section */}
           <section>

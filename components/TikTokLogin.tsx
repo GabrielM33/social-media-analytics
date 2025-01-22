@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -6,7 +6,7 @@ interface TikTokLoginProps {
   onAuthSuccess: (code: string) => void;
 }
 
-export default function TikTokLogin({ onAuthSuccess }: TikTokLoginProps) {
+function TikTokLoginContent({ onAuthSuccess }: TikTokLoginProps) {
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
 
@@ -54,5 +54,22 @@ export default function TikTokLogin({ onAuthSuccess }: TikTokLoginProps) {
         </>
       )}
     </button>
+  );
+}
+
+export default function TikTokLogin(props: TikTokLoginProps) {
+  return (
+    <Suspense
+      fallback={
+        <button
+          disabled
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-300 text-gray-600 rounded-md cursor-not-allowed"
+        >
+          <span>Loading...</span>
+        </button>
+      }
+    >
+      <TikTokLoginContent {...props} />
+    </Suspense>
   );
 }
