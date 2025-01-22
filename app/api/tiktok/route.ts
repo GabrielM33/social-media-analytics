@@ -12,6 +12,11 @@ interface TikTokMetrics {
   likeCount: number;
   commentCount: number;
   thumbnail?: string;
+  topComments: Array<{
+    text: string;
+    createTime: string;
+    likeCount: number;
+  }>;
 }
 
 // First step: Get the authorization URL
