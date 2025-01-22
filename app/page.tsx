@@ -6,6 +6,8 @@ import YoutubeData from "@/components/YoutubeData";
 //import InputBarTikTok from "@/components/InputBarTikTok";
 // import TikTokData from "@/components/TikTokData";
 import AggregateData from "@/components/AggregateData";
+import TikTokLogin from "@/components/TikTokLogin";
+import { useState } from "react";
 
 /*
 interface TikTokMetrics {
@@ -22,6 +24,13 @@ interface TikTokMetrics {
 */
 
 export default function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const handleTikTokAuthSuccess = () => {
+    setIsAuthenticated(true);
+    // You can add additional logic here after successful authentication
+  };
+
   //const [tiktokData, setTiktokData] = useState<TikTokMetrics | null>(null);
   //const [isTikTokLoading, setIsTikTokLoading] = useState(false);
   //const [tiktokError, setTiktokError] = useState<string | null>(null);
@@ -62,39 +71,24 @@ export default function Home() {
         Social Media API Project
       </h1>
       <div className="p-10 w-full max-w-4xl">
+        <div className="flex justify-center">
+          {!isAuthenticated ? (
+            <TikTokLogin onAuthSuccess={handleTikTokAuthSuccess} />
+          ) : (
+            <div className="text-green-600 font-medium mb-4">
+              ✓ Connected to TikTok
+            </div>
+          )}
+        </div>
         <div className="space-y-8">
-          {/* TikTok Section 
-          <Suspense
-            fallback={
-              <section>
-                <h2 className="text-2xl font-semibold mb-4">
-                  TikTok Analytics
-                </h2>
-                <div className="animate-pulse space-y-4">
-                  <div className="h-10 bg-gray-200 rounded"></div>
-                  <div className="h-40 bg-gray-200 rounded"></div>
-                </div>
-              </section>
-            }
-          >
+          {/* TikTok Section */}
+          {isAuthenticated && (
             <section>
               <h2 className="text-2xl font-semibold mb-4">TikTok Analytics</h2>
-              
-              <InputBarTikTok
-                onSubmit={handleTikTokSubmit}
-                isLoading={isTikTokLoading}
-              />
-              
-              
-              <TikTokData
-                data={tiktokData}
-                isLoading={isTikTokLoading}
-                error={tiktokError || undefined}
-              />
+              {/* TikTok content will be enabled when authentication is implemented */}
             </section>
-            
-          </Suspense>
-          */}
+          )}
+
           {/* YouTube Section */}
           <section>
             <InputBarYoututbe />
