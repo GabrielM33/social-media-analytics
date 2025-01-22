@@ -171,7 +171,7 @@ export default function InputBar() {
           className="flex-1"
         />
         <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Loading..." : "Analyze"}
+          {isLoading ? "Loading..." : "Confirm"}
         </Button>
       </form>
 
