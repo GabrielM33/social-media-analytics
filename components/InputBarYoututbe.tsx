@@ -4,14 +4,11 @@ import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import YoutubeData from "@/components/YoutubeData";
-//import InstagramData from "@/components/InstagramData";
-// import TikTokData from "@/components/TikTokData";
 
 export default function InputBar() {
   const [url, setUrl] = useState("");
   const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
-  //const [instagramVideoId, setInstagramVideoId] = useState<string | null>(null);
-  /*const [tiktokVideoId, setTiktokVideoId] = useState<string | null>(null); */
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,8 +24,6 @@ export default function InputBar() {
     setError(null);
     setIsLoading(true);
     setYoutubeVideoId(null);
-    //setInstagramVideoId(null);
-    /*setTiktokVideoId(null); */
 
     try {
       if (url.includes("youtube.com") || url.includes("youtu.be")) {
@@ -184,8 +179,6 @@ export default function InputBar() {
 
       <div className="flex flex-wrap gap-4">
         {youtubeVideoId && <YoutubeData videoId={youtubeVideoId} />}
-        {/*{instagramVideoId && <InstagramData videoId={instagramVideoId} />}*/}
-        {/*{tiktokVideoId && <TikTokData videoId={tiktokVideoId} />}*/}
       </div>
     </div>
   );
