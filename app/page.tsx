@@ -1,69 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import InputBar from "@/components/InputBar";
 import InputBarYoututbe from "@/components/InputBarYoututbe";
 import InputBarTikTok from "@/components/InputBarTikTok";
-import InstagramData from "@/components/InstagramData";
 import YoutubeData from "@/components/YoutubeData";
 import TikTokData from "@/components/TikTokData";
 import AggregateData from "@/components/AggregateData";
-
-interface InstagramMetrics {
-  views: string;
-  likes: string;
-  comments: string;
-  top_comments: Array<{
-    id: string;
-    text: string;
-    author: string;
-    likeCount: number;
-    publishedAt: string;
-  }>;
-}
 
 interface TikTokMetrics {
   viewCount: number;
   likeCount: number;
   commentCount: number;
+  thumbnail?: string;
   topComments: Array<{
     text: string;
     createTime: string;
     likeCount: number;
   }>;
-  thumbnail?: string;
 }
 
 export default function Home() {
-  const [instagramData, setInstagramData] = useState<InstagramMetrics | null>(
-    null
-  );
   const [tiktokData, setTiktokData] = useState<TikTokMetrics | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [isTikTokLoading, setIsTikTokLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [tiktokError, setTiktokError] = useState<string | null>(null);
-
-  const handleInstagramSubmit = async (videoId: string) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/instagram?videoId=${videoId}`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch Instagram data");
-      }
-
-      const data = await response.json();
-      setInstagramData(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-      setInstagramData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleTikTokSubmit = async (url: string) => {
     setIsTikTokLoading(true);
@@ -100,18 +59,6 @@ export default function Home() {
       </h1>
       <div className="p-10 w-full max-w-4xl">
         <div className="space-y-8">
-          {/* Instagram Section */}
-          <section>
-            <h2 className="text-2xl font-semibold mb-4">Instagram Analytics</h2>
-            <InputBar onSubmit={handleInstagramSubmit} isLoading={isLoading} />
-            {error && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-600">{error}</p>
-              </div>
-            )}
-            {instagramData && <InstagramData data={instagramData} />}
-          </section>
-
           {/* TikTok Section */}
           <section>
             <h2 className="text-2xl font-semibold mb-4">TikTok Analytics</h2>
