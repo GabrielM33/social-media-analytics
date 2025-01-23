@@ -9,17 +9,17 @@ interface ReelMetrics {
   likes: number;
   comments: number;
   views: number;
-  caption: string;
   timestamp: string;
+  title: string;
 }
 
 interface ApifyReelData {
   likesCount: number;
   commentsCount: number;
   videoPlayCount: number;
-  caption: string;
   timestamp: string;
   type: string;
+  caption: string;
 }
 
 export default function InputBarInstagram() {
@@ -42,11 +42,22 @@ export default function InputBarInstagram() {
         resultsLimit: 1,
         proxy: {
           useApifyProxy: true,
-          apifyProxyGroups: ["RESIDENTIAL"],
         },
+        fields: [
+          "likesCount",
+          "commentsCount",
+          "videoPlayCount",
+          "timestamp",
+          "type",
+          "caption",
+        ],
       };
 
-      const run = await client.actor("apify/instagram-scraper").call(input);
+      const run = await client.actor("apify/instagram-scraper").call(input, {
+        memory: 256,
+        timeout: 30,
+      });
+
       const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
       if (items.length > 0) {
@@ -60,8 +71,8 @@ export default function InputBarInstagram() {
           likes: reelData.likesCount,
           comments: reelData.commentsCount,
           views: reelData.videoPlayCount,
-          caption: reelData.caption,
           timestamp: reelData.timestamp || new Date().toISOString(),
+          title: reelData.caption || "No caption available",
         });
       } else {
         throw new Error("No data found for this reel");
@@ -99,6 +110,9 @@ export default function InputBarInstagram() {
 
       {metrics && (
         <div className="mt-4 p-4 border rounded-lg">
+          <div className="col-span-2 text-center text-lg font-semibold mb-2">
+            {metrics.title}
+          </div>
           <h2 className="text-xl font-semibold mb-2">Metrics</h2>
           <div className="grid grid-cols-2 gap-2">
             <div>Likes: {metrics.likes.toLocaleString()}</div>
@@ -108,12 +122,6 @@ export default function InputBarInstagram() {
               Posted: {new Date(metrics.timestamp).toLocaleDateString()}
             </div>
           </div>
-          {metrics.caption && (
-            <div className="mt-2">
-              <strong>Caption:</strong>
-              <p className="text-sm mt-1">{metrics.caption}</p>
-            </div>
-          )}
         </div>
       )}
     </div>
