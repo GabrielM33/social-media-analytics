@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ApifyClient } from "apify-client";
 import { useState } from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 interface ReelMetrics {
   likes: number;
@@ -36,42 +37,31 @@ interface ApifyReelData {
   }>;
 }
 
+const formatNumber = (num: number) => num.toLocaleString();
+
 export default function InputBarInstagram() {
   const [reelUrl, setReelUrl] = useState("");
   const [metrics, setMetrics] = useState<ReelMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const normalizeInstagramUrl = (url: string): string => {
-    // Remove @ symbol if present at the start
-    url = url.replace(/^@/, "");
+  const extractReelId = (url: string): string | null => {
+    // Remove @ and leading/trailing whitespace
+    url = url.replace(/^@/, "").trim();
 
-    // If URL doesn't start with http/https, add https://
-    if (!url.startsWith("http")) {
-      url = "https://" + url;
+    // Try to extract reel ID from various URL formats
+    const patterns = [
+      /instagram\.com\/reels?\/([A-Za-z0-9_-]+)/, // Matches /reels/ or /reel/
+      /instagram\.com\/p\/([A-Za-z0-9_-]+)/, // Matches /p/ format
+      /^([A-Za-z0-9_-]+)$/, // Matches just the ID
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match?.[1]) return match[1];
     }
 
-    try {
-      const urlObj = new URL(url);
-      // Convert www.instagram.com to instagram.com for consistency
-      urlObj.hostname = urlObj.hostname.replace(
-        "www.instagram.com",
-        "instagram.com"
-      );
-
-      // Handle different URL patterns
-      if (urlObj.pathname.includes("/reels/")) {
-        // Format: instagram.com/reels/CODE/
-        const code = urlObj.pathname.split("/reels/")[1].replace(/\/$/, "");
-        return `https://instagram.com/reel/${code}`;
-      } else if (urlObj.pathname.includes("/reel/")) {
-        // Format: instagram.com/reel/CODE/
-        return urlObj.toString();
-      }
-      return url;
-    } catch {
-      return url;
-    }
+    return null;
   };
 
   const fetchReelMetrics = async () => {
@@ -79,7 +69,12 @@ export default function InputBarInstagram() {
       setLoading(true);
       setError(null);
 
-      const normalizedUrl = normalizeInstagramUrl(reelUrl);
+      const reelId = extractReelId(reelUrl);
+      if (!reelId) {
+        throw new Error("Invalid Instagram reel URL format");
+      }
+
+      const normalizedUrl = `https://www.instagram.com/reel/${reelId}/`;
       console.log("Normalized URL:", normalizedUrl);
 
       const client = new ApifyClient({
@@ -92,6 +87,7 @@ export default function InputBarInstagram() {
         proxy: {
           useApifyProxy: true,
         },
+        maxRequestRetries: 3,
         fields: [
           "likesCount",
           "commentsCount",
@@ -105,36 +101,42 @@ export default function InputBarInstagram() {
 
       const run = await client.actor("apify/instagram-scraper").call(input, {
         memory: 256,
-        timeout: 30,
+        timeout: 60,
       });
 
       const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
-      if (items.length > 0) {
-        const reelData = items[0] as unknown as ApifyReelData;
-
-        if (reelData.type !== "Video") {
-          throw new Error("The provided URL is not a reel");
-        }
-
-        setMetrics({
-          likes: reelData.likesCount,
-          comments: reelData.commentsCount,
-          views: reelData.videoPlayCount,
-          timestamp: reelData.timestamp || new Date().toISOString(),
-          title: reelData.caption || "No caption available",
-          top_comments: (reelData.comments || [])
-            .slice(0, 5)
-            .map((comment) => ({
-              text: comment.text,
-              author: comment.ownerUsername,
-              timestamp: comment.timestamp,
-              likes: comment.likesCount,
-            })),
-        });
-      } else {
+      if (!items?.[0]) {
         throw new Error("No data found for this reel");
       }
+
+      const reelData = items[0] as unknown as ApifyReelData;
+      if (
+        !reelData.likesCount ||
+        !reelData.commentsCount ||
+        !reelData.videoPlayCount
+      ) {
+        throw new Error("Invalid reel data received");
+      }
+
+      console.log("Fetched reel data:", reelData);
+
+      const comments = reelData.comments || [];
+      console.log("Found comments:", comments);
+
+      setMetrics({
+        likes: reelData.likesCount || 0,
+        comments: reelData.commentsCount || 0,
+        views: reelData.videoPlayCount || 0,
+        timestamp: reelData.timestamp || new Date().toISOString(),
+        title: reelData.caption || "No caption available",
+        top_comments: comments.slice(0, 5).map((comment) => ({
+          text: comment.text || "",
+          author: comment.ownerUsername || "Unknown",
+          timestamp: comment.timestamp || new Date().toISOString(),
+          likes: comment.likesCount || 0,
+        })),
+      });
     } catch (error) {
       console.error("Error fetching reel metrics:", error);
       setError(
@@ -147,64 +149,87 @@ export default function InputBarInstagram() {
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-semibold">Instagram Reel Metrics</h1>
-      <div className="flex flex-row items-center justify-center gap-2 mb-10 mt-2">
+    <div className="w-full max-w-3xl mx-auto p-4">
+      <div className="flex flex-row items-center justify-center gap-2 mb-6">
         <Input
-          placeholder="Enter Instagram reel URL (e.g., https://www.instagram.com/reel/xyz)"
+          placeholder="Enter Instagram reel URL"
           value={reelUrl}
           onChange={(e) => setReelUrl(e.target.value)}
         />
         <Button onClick={fetchReelMetrics} disabled={loading || !reelUrl}>
-          {loading ? "Loading..." : "Fetch Metrics"}
+          {loading ? "Loading..." : "Confirm"}
         </Button>
       </div>
 
-      {error && (
-        <div className="mt-4 p-4 border border-red-200 rounded-lg bg-red-50 text-red-600">
-          {error}
+      {error && <div className="text-red-500 p-4">{error}</div>}
+
+      {loading && (
+        <div className="flex items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
         </div>
       )}
 
       {metrics && (
-        <div className="mt-4 p-4 border rounded-lg">
-          <div className="col-span-2 text-center text-lg font-semibold mb-2">
-            {metrics.title}
-          </div>
-          <h2 className="text-xl font-semibold mb-2">Metrics</h2>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            <div>Likes: {metrics.likes.toLocaleString()}</div>
-            <div>Comments: {metrics.comments.toLocaleString()}</div>
-            <div>Views: {metrics.views.toLocaleString()}</div>
-            <div>
-              Posted: {new Date(metrics.timestamp).toLocaleDateString()}
+        <Card className="w-full max-w-3xl mx-auto">
+          <CardHeader>
+            <CardTitle
+              className="text-lg text-center truncate"
+              title={metrics.title}
+            >
+              {metrics.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">Likes</div>
+                <div className="font-semibold">
+                  {formatNumber(metrics.likes)}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">Comments</div>
+                <div className="font-semibold">
+                  {formatNumber(metrics.comments)}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">Views</div>
+                <div className="font-semibold">
+                  {formatNumber(metrics.views)}
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-3">Top Comments</h3>
             <div className="space-y-4">
+              <div className="text-sm text-muted-foreground font-medium">
+                Top Comments
+              </div>
               {metrics.top_comments.length > 0 ? (
                 metrics.top_comments.map((comment, index) => (
-                  <div key={index} className="border-b pb-3">
-                    <div className="flex justify-between items-start">
-                      <span className="font-medium">{comment.author}</span>
-                      <span className="text-sm text-gray-500">
+                  <div key={index} className="border-b border-border pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="font-medium text-sm">
+                        {comment.author}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
                         {new Date(comment.timestamp).toLocaleDateString()}
-                      </span>
+                      </div>
                     </div>
-                    <p className="mt-1 text-sm">{comment.text}</p>
-                    <div className="mt-1 text-sm text-gray-500">
-                      {comment.likes.toLocaleString()} likes
+                    <div className="text-sm mt-1">{comment.text}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatNumber(comment.likes)} likes
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 italic">No comments available</p>
+                <div className="text-sm text-muted-foreground italic">
+                  No comments available
+                </div>
               )}
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
