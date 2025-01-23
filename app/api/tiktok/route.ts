@@ -27,16 +27,28 @@ export function GET() {
       );
     }
 
-    const authUrl =
-      `https://www.tiktok.com/v2/auth/authorize?` +
-      new URLSearchParams({
-        client_key: process.env.TIKTOK_CLIENT_KEY,
-        redirect_uri: REDIRECT_URI,
-        scope: "video.list,user.info.basic",
-        response_type: "code",
-        state: Math.random().toString(36).substring(7),
-        test_app: "1",
-      });
+    const params = {
+      client_key: process.env.TIKTOK_CLIENT_KEY,
+      redirect_uri: REDIRECT_URI,
+      scope: "video.list,user.info.basic",
+      response_type: "code",
+      state: Math.random().toString(36).substring(7),
+      test_app: "1",
+    };
+
+    console.log("Auth URL parameters:", {
+      ...params,
+      client_key: "[REDACTED]",
+    });
+
+    const authUrl = `https://www.tiktok.com/v2/auth/authorize?${new URLSearchParams(
+      params
+    )}`;
+
+    console.log(
+      "Generated auth URL (with redacted client_key):",
+      authUrl.replace(process.env.TIKTOK_CLIENT_KEY || "", "[REDACTED]")
+    );
 
     return NextResponse.json({ authUrl });
   } catch (error) {
@@ -57,16 +69,23 @@ async function getAccessToken(code: string): Promise<string> {
 
     console.log("Attempting to exchange code for access token");
 
+    const tokenRequestBody = {
+      client_key: process.env.TIKTOK_CLIENT_KEY,
+      client_secret: process.env.TIKTOK_CLIENT_SECRET,
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: REDIRECT_URI,
+      test_app: "1",
+    };
+
+    console.log("Token request body:", {
+      ...tokenRequestBody,
+      client_secret: "[REDACTED]",
+    });
+
     const response = await axios.post(
       "https://open.tiktokapis.com/v2/oauth/token/",
-      {
-        client_key: process.env.TIKTOK_CLIENT_KEY,
-        client_secret: process.env.TIKTOK_CLIENT_SECRET,
-        code,
-        grant_type: "authorization_code",
-        redirect_uri: REDIRECT_URI,
-        test_app: "1",
-      },
+      tokenRequestBody,
       {
         headers: {
           "Cache-Control": "no-cache",
@@ -75,28 +94,37 @@ async function getAccessToken(code: string): Promise<string> {
       }
     );
 
+    console.log("Raw token response:", response.data);
+
     if (!response.data) {
       throw new Error("Empty response from token endpoint");
     }
 
-    console.log("Full token response:", JSON.stringify(response.data, null, 2));
+    // For sandbox mode, the response might be nested differently
+    let accessToken = null;
+    const responseData = response.data;
 
-    // TikTok's v2 API returns the token in data.access_token
-    const accessToken =
-      response.data.access_token || response.data.data?.access_token;
+    if (responseData.access_token) {
+      accessToken = responseData.access_token;
+    } else if (responseData.data?.access_token) {
+      accessToken = responseData.data.access_token;
+    } else if (responseData.token) {
+      accessToken = responseData.token;
+    } else if (responseData.data?.token) {
+      accessToken = responseData.data.token;
+    }
 
     if (!accessToken) {
       console.error("Token response structure:", {
-        hasData: !!response.data,
-        dataKeys: Object.keys(response.data),
-        nestedDataKeys: response.data.data
-          ? Object.keys(response.data.data)
-          : [],
-        fullResponse: response.data,
+        hasData: !!responseData,
+        topLevelKeys: Object.keys(responseData),
+        nestedDataKeys: responseData.data ? Object.keys(responseData.data) : [],
+        fullResponse: responseData,
       });
       throw new Error("No access token in response");
     }
 
+    console.log("Successfully extracted access token");
     return accessToken;
   } catch (error: any) {
     console.error("Token exchange error:", {
@@ -107,6 +135,7 @@ async function getAccessToken(code: string): Promise<string> {
       redirectUri: REDIRECT_URI,
       clientKeyPresent: !!process.env.TIKTOK_CLIENT_KEY,
       clientSecretPresent: !!process.env.TIKTOK_CLIENT_SECRET,
+      code: code ? "present" : "missing",
     });
 
     if (error.response?.data?.error) {
