@@ -35,6 +35,7 @@ export function GET() {
         scope: "video.list,user.info.basic",
         response_type: "code",
         state: Math.random().toString(36).substring(7),
+        test_app: "1",
       });
 
     return NextResponse.json({ authUrl });
@@ -64,6 +65,7 @@ async function getAccessToken(code: string): Promise<string> {
         code,
         grant_type: "authorization_code",
         redirect_uri: REDIRECT_URI,
+        test_app: "1",
       },
       {
         headers: {
@@ -90,6 +92,7 @@ async function getAccessToken(code: string): Promise<string> {
         nestedDataKeys: response.data.data
           ? Object.keys(response.data.data)
           : [],
+        fullResponse: response.data,
       });
       throw new Error("No access token in response");
     }
@@ -143,6 +146,7 @@ async function getUserVideos(accessToken: string): Promise<TikTokVideo[]> {
           "create_time",
         ],
         max_count: 20,
+        test_app: "1",
       },
       {
         headers: {
