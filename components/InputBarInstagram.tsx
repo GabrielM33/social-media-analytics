@@ -196,21 +196,21 @@ export default function InputBarInstagram() {
           <CardContent>
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div className="text-center">
-                <div className="text-sm text-muted-foreground">Likes</div>
-                <div className="font-semibold">
-                  {formatNumber(metrics.likes)}
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground">Comments</div>
-                <div className="font-semibold">
-                  {formatNumber(metrics.comments)}
-                </div>
-              </div>
-              <div className="text-center">
                 <div className="text-sm text-muted-foreground">Views</div>
                 <div className="font-semibold">
                   {formatNumber(metrics.views)}
+                </div>
+                <div className="text-center">
+                  <div className="text-sm text-muted-foreground">Likes</div>
+                  <div className="font-semibold">
+                    {formatNumber(metrics.likes)}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm text-muted-foreground">Comments</div>
+                  <div className="font-semibold">
+                    {formatNumber(metrics.comments)}
+                  </div>
                 </div>
               </div>
             </div>

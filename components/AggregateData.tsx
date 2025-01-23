@@ -54,6 +54,12 @@ export default function AggregateData() {
         <CardContent>
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="text-center">
+              <div className="text-sm text-muted-foreground">Total Views</div>
+              <div className="font-semibold">
+                {formatNumber(metrics.totalViews)}
+              </div>
+            </div>
+            <div className="text-center">
               <div className="text-sm text-muted-foreground">Total Likes</div>
               <div className="font-semibold">
                 {formatNumber(metrics.totalLikes)}
@@ -65,12 +71,6 @@ export default function AggregateData() {
               </div>
               <div className="font-semibold">
                 {formatNumber(metrics.totalComments)}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground">Total Views</div>
-              <div className="font-semibold">
-                {formatNumber(metrics.totalViews)}
               </div>
             </div>
           </div>
