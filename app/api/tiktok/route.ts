@@ -57,7 +57,7 @@ async function getAccessToken(code: string): Promise<string> {
     console.log("Attempting to exchange code for access token");
 
     const response = await axios.post(
-      `${TIKTOK_API_URL}/oauth/token/`,
+      "https://open.tiktokapis.com/v2/oauth/token/",
       {
         client_key: process.env.TIKTOK_CLIENT_KEY,
         client_secret: process.env.TIKTOK_CLIENT_SECRET,
@@ -67,6 +67,7 @@ async function getAccessToken(code: string): Promise<string> {
       },
       {
         headers: {
+          "Cache-Control": "no-cache",
           "Content-Type": "application/json",
         },
       }
@@ -76,29 +77,41 @@ async function getAccessToken(code: string): Promise<string> {
       throw new Error("Empty response from token endpoint");
     }
 
-    console.log("Token response structure:", {
-      hasData: !!response.data,
-      dataKeys: Object.keys(response.data),
-      hasAccessToken: !!response.data.access_token,
-    });
+    console.log("Full token response:", JSON.stringify(response.data, null, 2));
 
-    if (!response.data.access_token) {
+    // TikTok's v2 API returns the token in data.access_token
+    const accessToken =
+      response.data.access_token || response.data.data?.access_token;
+
+    if (!accessToken) {
+      console.error("Token response structure:", {
+        hasData: !!response.data,
+        dataKeys: Object.keys(response.data),
+        nestedDataKeys: response.data.data
+          ? Object.keys(response.data.data)
+          : [],
+      });
       throw new Error("No access token in response");
     }
 
-    return response.data.access_token;
+    return accessToken;
   } catch (error: any) {
     console.error("Token exchange error:", {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
-      endpoint: `${TIKTOK_API_URL}/oauth/token/`,
+      endpoint: "https://open.tiktokapis.com/v2/oauth/token/",
       redirectUri: REDIRECT_URI,
+      clientKeyPresent: !!process.env.TIKTOK_CLIENT_KEY,
+      clientSecretPresent: !!process.env.TIKTOK_CLIENT_SECRET,
     });
 
-    if (error.response?.data?.error?.code) {
+    if (error.response?.data?.error) {
+      const errorData = error.response.data.error;
       throw new Error(
-        `TikTok Auth Error: ${error.response.data.error.message} (Code: ${error.response.data.error.code})`
+        `TikTok Auth Error: ${
+          errorData.message || errorData.code || JSON.stringify(errorData)
+        }`
       );
     }
     throw new Error(error.message || "Failed to get access token");
