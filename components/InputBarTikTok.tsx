@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ApifyClient } from "apify-client";
+import { useMetrics } from "@/lib/MetricsContext";
 
 interface VideoMetrics {
   title: string;
@@ -58,6 +59,19 @@ export default function InputBarTikTok() {
   const [metrics, setMetrics] = useState<VideoMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { setTiktokMetrics } = useMetrics();
+
+  useEffect(() => {
+    if (metrics) {
+      setTiktokMetrics({
+        views: metrics.views,
+        likes: metrics.likes,
+        comments: metrics.comments,
+      });
+    } else {
+      setTiktokMetrics(null);
+    }
+  }, [metrics, setTiktokMetrics]);
 
   const handleFetch = async () => {
     if (!videoUrl) {
@@ -151,9 +165,16 @@ export default function InputBarTikTok() {
           onChange={(e) => setVideoUrl(e.target.value)}
         />
         <Button onClick={handleFetch} disabled={loading || !videoUrl}>
-          {loading ? "Loading..." : "Confirm"}
+          Confirm
         </Button>
       </div>
+
+      {loading && (
+        <div className="flex items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+        </div>
+      )}
+
       {error && <div className="text-red-500 p-4">{error}</div>}
       {metrics && (
         <Card className="w-full max-w-3xl mx-auto">

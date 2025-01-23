@@ -3,8 +3,9 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ApifyClient } from "apify-client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useMetrics } from "@/lib/MetricsContext";
 
 interface ReelMetrics {
   likes: number;
@@ -44,6 +45,19 @@ export default function InputBarInstagram() {
   const [metrics, setMetrics] = useState<ReelMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { setInstagramMetrics } = useMetrics();
+
+  useEffect(() => {
+    if (metrics) {
+      setInstagramMetrics({
+        views: metrics.views,
+        likes: metrics.likes,
+        comments: metrics.comments,
+      });
+    } else {
+      setInstagramMetrics(null);
+    }
+  }, [metrics, setInstagramMetrics]);
 
   const extractReelId = (url: string): string | null => {
     // Remove @ and leading/trailing whitespace
@@ -157,7 +171,7 @@ export default function InputBarInstagram() {
           onChange={(e) => setReelUrl(e.target.value)}
         />
         <Button onClick={fetchReelMetrics} disabled={loading || !reelUrl}>
-          {loading ? "Loading..." : "Confirm"}
+          Confirm
         </Button>
       </div>
 

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useMetrics } from "@/lib/MetricsContext";
 
 interface VideoStats {
   title: string;
@@ -31,6 +32,19 @@ export default function InputBar() {
   const [stats, setStats] = useState<VideoStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
+  const { setYoutubeMetrics } = useMetrics();
+
+  useEffect(() => {
+    if (stats) {
+      setYoutubeMetrics({
+        views: parseInt(stats.views) || 0,
+        likes: parseInt(stats.likes) || 0,
+        comments: parseInt(stats.comments) || 0,
+      });
+    } else {
+      setYoutubeMetrics(null);
+    }
+  }, [stats, setYoutubeMetrics]);
 
   const handleUrlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,7 +151,7 @@ export default function InputBar() {
           onChange={(e) => setUrl(e.target.value)}
         />
         <Button onClick={handleUrlSubmit} disabled={isLoading || !url}>
-          {isLoading ? "Loading..." : "Confirm"}
+          Confirm
         </Button>
       </div>
 
