@@ -35,15 +35,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
+    const { access_token, user_id } = await response.json();
 
-    // Here you would typically:
-    // 1. Store the access token securely
-    // 2. Fetch user data if needed
-    // 3. Create a session or handle authentication
+    // Create a response with cookies to store the access token securely
+    const response_url = new URL("/?success=true", request.url);
+    response_url.searchParams.set("instagram_user_id", user_id);
 
-    // Redirect back to the main page with success
-    return NextResponse.redirect(new URL("/?success=true", request.url));
+    const finalResponse = NextResponse.redirect(response_url);
+
+    // Set a secure HTTP-only cookie with the access token
+    finalResponse.cookies.set("instagram_access_token", access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 1 week
+    });
+
+    return finalResponse;
   } catch (error) {
     console.error("Instagram callback error:", error);
     return NextResponse.redirect(new URL("/?error=server_error", request.url));
