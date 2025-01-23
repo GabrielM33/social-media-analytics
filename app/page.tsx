@@ -6,9 +6,7 @@ import InputBarTikTok from "@/components/InputBarTikTok";
 export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center py-10">
-      <h1 className="text-4xl font-bold text-center">
-        Social Media API Project
-      </h1>
+      <h1 className="text-4xl font-bold text-center">Social Media Analytics</h1>
       <div className="p-10 w-full max-w-4xl">
         <div className="mt-12">
           <AggregateData />
