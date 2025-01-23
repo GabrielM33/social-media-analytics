@@ -154,7 +154,7 @@ export default function InputBarTikTok() {
           {loading ? "Loading..." : "Confirm"}
         </Button>
       </div>
-      {error && <div className="text-red-500 p-4">{error}</div>}ß
+      {error && <div className="text-red-500 p-4">{error}</div>}
       {metrics && (
         <Card className="w-full max-w-3xl mx-auto">
           <CardHeader>

@@ -129,99 +129,94 @@ export default function InputBar() {
   }, [youtubeVideoId]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 space-y-4">
-      <form onSubmit={handleUrlSubmit} className="flex gap-2">
+    <div className="w-full max-w-3xl mx-auto p-4">
+      <div className="flex flex-row items-center justify-center gap-2 mb-6">
         <Input
-          type="url"
           placeholder="Enter a YouTube video URL"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          className="flex-1"
         />
-        <Button type="submit" disabled={isLoading}>
+        <Button onClick={handleUrlSubmit} disabled={isLoading || !url}>
           {isLoading ? "Loading..." : "Confirm"}
         </Button>
-      </form>
+      </div>
 
-      {error && <div className="text-red-500">{error}</div>}
+      {error && <div className="text-red-500 p-4">{error}</div>}
 
-      <div className="flex flex-wrap gap-4">
-        {statsLoading ? (
-          <div className="flex items-center justify-center p-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-          </div>
-        ) : statsError ? (
-          <div className="text-red-500 p-4">{statsError}</div>
-        ) : stats ? (
-          <Card className="w-full max-w-3xl mx-auto">
-            <CardHeader>
-              <CardTitle
-                className="text-lg text-center truncate"
-                title={stats.title}
-              >
-                {stats.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="text-center">
-                  <div className="text-sm text-muted-foreground">Views</div>
-                  <div className="font-semibold">
-                    {formatNumber(parseInt(stats.views))}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm text-muted-foreground">Likes</div>
-                  <div className="font-semibold">
-                    {formatNumber(parseInt(stats.likes))}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm text-muted-foreground">Comments</div>
-                  <div className="font-semibold">
-                    {formatNumber(parseInt(stats.comments))}
-                  </div>
+      {statsLoading && (
+        <div className="flex items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+        </div>
+      )}
+
+      {statsError && <div className="text-red-500 p-4">{statsError}</div>}
+
+      {stats && (
+        <Card className="w-full max-w-3xl mx-auto">
+          <CardHeader>
+            <CardTitle
+              className="text-lg text-center truncate"
+              title={stats.title}
+            >
+              {stats.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">Views</div>
+                <div className="font-semibold">
+                  {formatNumber(parseInt(stats.views))}
                 </div>
               </div>
-
-              <div className="space-y-4">
-                <div className="text-sm text-muted-foreground font-medium">
-                  Top Comments
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">Likes</div>
+                <div className="font-semibold">
+                  {formatNumber(parseInt(stats.likes))}
                 </div>
-                {stats.commentsDisabled ? (
-                  <div className="text-sm text-muted-foreground italic">
-                    Comments are disabled for this video
-                  </div>
-                ) : stats.top_comments?.length ? (
-                  stats.top_comments.map((comment) => (
-                    <div
-                      key={comment.id}
-                      className="border-b border-border pb-3"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="font-medium text-sm">
-                          {comment.author}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(comment.publishedAt).toLocaleDateString()}
-                        </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">Comments</div>
+                <div className="font-semibold">
+                  {formatNumber(parseInt(stats.comments))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground font-medium">
+                Top Comments
+              </div>
+              {stats.commentsDisabled ? (
+                <div className="text-sm text-muted-foreground italic">
+                  Comments are disabled for this video
+                </div>
+              ) : stats.top_comments?.length ? (
+                stats.top_comments.map((comment) => (
+                  <div key={comment.id} className="border-b border-border pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="font-medium text-sm">
+                        {comment.author}
                       </div>
-                      <div className="text-sm mt-1">{comment.text}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {formatNumber(comment.likeCount)} likes
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(comment.publishedAt).toLocaleDateString()}
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-muted-foreground italic">
-                    No comments available
+                    <div className="text-sm mt-1">{comment.text}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatNumber(comment.likeCount)} likes
+                    </div>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ) : null}
-      </div>
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground italic">
+                  No comments available
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -11,17 +11,16 @@ export default function Home() {
       </h1>
       <div className="p-10 w-full max-w-4xl">
         <section>
-          <h2 className="text-2xl font-semibold mb-4">TikTok Analytics</h2>
-          <InputBarTikTok />
+          <h2 className="text-2xl font-semibold mb-4 text-center">YouTube</h2>
+          <InputBarYoututbe />
         </section>
         <section>
-          <h2 className="text-2xl font-semibold mb-4">Instagram Analytics</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-center">Instagram</h2>
           <InputBarInstagram />
         </section>
-        {/* YouTube Section */}
         <section>
-          <h2 className="text-2xl font-semibold mb-4">YouTube Analytics</h2>
-          <InputBarYoututbe />
+          <h2 className="text-2xl font-semibold mb-4 text-center">TikTok</h2>
+          <InputBarTikTok />
         </section>
       </div>
 
