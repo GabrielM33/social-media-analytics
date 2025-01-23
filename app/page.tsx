@@ -1,5 +1,4 @@
 import InputBarYoututbe from "@/components/InputBarYoututbe";
-import YoutubeData from "@/components/YoutubeData";
 import AggregateData from "@/components/AggregateData";
 import InputBarInstagram from "@/components/InputBarInstagram";
 import InputBarTikTok from "@/components/InputBarTikTok";
@@ -23,7 +22,6 @@ export default function Home() {
         <section>
           <h2 className="text-2xl font-semibold mb-4">YouTube Analytics</h2>
           <InputBarYoututbe />
-          <YoutubeData />
         </section>
       </div>
 
