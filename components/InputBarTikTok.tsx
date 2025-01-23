@@ -24,6 +24,10 @@ interface CommentData {
 
 interface TikTokApiResponse {
   desc?: string;
+  description?: string;
+  title?: string;
+  text?: string;
+  videoTitle?: string;
   diggCount?: number;
   commentCount?: number;
   playCount?: number;
@@ -87,9 +91,24 @@ export default function InputBarTiktok() {
 
       const tiktokData = items[0] as TikTokApiResponse;
 
+      // Debug logging for title fields
+      console.log("Title fields in response:", {
+        title: tiktokData.title,
+        videoTitle: tiktokData.videoTitle,
+        desc: tiktokData.desc,
+        description: tiktokData.description,
+        text: tiktokData.text,
+      });
+
       // Transform the data into our metrics format
       const transformedMetrics: VideoMetrics = {
-        title: tiktokData.desc || "No description available",
+        title:
+          tiktokData.title ||
+          tiktokData.videoTitle ||
+          tiktokData.desc ||
+          tiktokData.description ||
+          tiktokData.text ||
+          "No description available",
         likes: tiktokData.diggCount || tiktokData.stats?.diggCount || 0,
         comments:
           tiktokData.commentCount || tiktokData.stats?.commentCount || 0,
