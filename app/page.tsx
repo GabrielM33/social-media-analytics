@@ -3,13 +3,15 @@
 // import { Suspense } from "react";
 import InputBarYoututbe from "@/components/InputBarYoututbe";
 import YoutubeData from "@/components/YoutubeData";
-//import InputBarTikTok from "@/components/InputBarTikTok";
-// import TikTokData from "@/components/TikTokData";
-import AggregateData from "@/components/AggregateData";
+import InputBarTikTok from "@/components/InputBarTikTok";
+import TikTokData from "@/components/TikTokData";
 import TikTokLogin from "@/components/TikTokLogin";
-import { useState } from "react";
+import InstagramLogin from "@/components/InstagramLogin";
+import AggregateData from "@/components/AggregateData";
 
-/*
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+
 interface TikTokMetrics {
   viewCount: number;
   likeCount: number;
@@ -21,24 +23,51 @@ interface TikTokMetrics {
     likeCount: number;
   }>;
 }
-*/
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [tiktokData, setTiktokData] = useState<TikTokMetrics | null>(null);
+  const [isTikTokLoading, setIsTikTokLoading] = useState(false);
+  const [tiktokError, setTiktokError] = useState<string | undefined>();
+  const [tikTokAuthCode, setTikTokAuthCode] = useState<string | null>(() => {
+    // Initialize from localStorage if available
+    if (typeof window !== "undefined") {
+      const savedCode = localStorage.getItem("tiktokAuthCode");
+      return savedCode;
+    }
+    return null;
+  });
+  const searchParams = useSearchParams();
 
-  const handleTikTokAuthSuccess = () => {
+  // Check for auth code in URL on mount
+  useEffect(() => {
+    const code = searchParams.get("code");
+    if (code) {
+      handleTikTokAuthSuccess(code);
+    }
+  }, [searchParams]);
+
+  // Set initial authentication state based on auth code
+  useEffect(() => {
+    setIsAuthenticated(!!tikTokAuthCode);
+  }, [tikTokAuthCode]);
+
+  const handleTikTokAuthSuccess = (code: string) => {
     setIsAuthenticated(true);
-    // You can add additional logic here after successful authentication
+    setTikTokAuthCode(code);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("tiktokAuthCode", code);
+    }
   };
 
-  //const [tiktokData, setTiktokData] = useState<TikTokMetrics | null>(null);
-  //const [isTikTokLoading, setIsTikTokLoading] = useState(false);
-  //const [tiktokError, setTiktokError] = useState<string | null>(null);
-
-  /*  
   const handleTikTokSubmit = async (url: string) => {
+    if (!tikTokAuthCode) {
+      setTiktokError("TikTok authentication required");
+      return;
+    }
+
     setIsTikTokLoading(true);
-    setTiktokError(null);
+    setTiktokError(undefined);
 
     try {
       const response = await fetch("/api/tiktok", {
@@ -46,7 +75,7 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, code: tikTokAuthCode }),
       });
 
       if (!response.ok) {
@@ -63,7 +92,6 @@ export default function Home() {
       setIsTikTokLoading(false);
     }
   };
-*/
 
   return (
     <div className="flex flex-col items-center justify-center py-10">
@@ -85,17 +113,24 @@ export default function Home() {
           {isAuthenticated && (
             <section>
               <h2 className="text-2xl font-semibold mb-4">TikTok Analytics</h2>
-              {/* TikTok content will be enabled when authentication is implemented */}
+              <InputBarTikTok
+                onSubmit={handleTikTokSubmit}
+                isLoading={isTikTokLoading}
+              />
+              <TikTokData
+                data={tiktokData}
+                isLoading={isTikTokLoading}
+                error={tiktokError}
+              />
             </section>
           )}
-          <div className="flex justify-center">
-            <span className="text-gray-500 py-4">
-              Note: Waiting for TikTok Approval, currently only YouTube is
-              supported.
-            </span>
-          </div>
+          {/* Instagram Section */}
+          <section className="flex justify-center py-4">
+            <InstagramLogin />
+          </section>
           {/* YouTube Section */}
           <section>
+            <h2 className="text-2xl font-semibold mb-4">YouTube Analytics</h2>
             <InputBarYoututbe />
             <YoutubeData />
           </section>
