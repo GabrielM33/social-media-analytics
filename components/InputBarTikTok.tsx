@@ -53,7 +53,7 @@ const client = new ApifyClient({
   token: process.env.NEXT_PUBLIC_APIFY_API_TOKEN,
 });
 
-export default function InputBarTiktok() {
+export default function InputBarTikTok() {
   const [videoUrl, setVideoUrl] = useState("");
   const [metrics, setMetrics] = useState<VideoMetrics | null>(null);
   const [loading, setLoading] = useState(false);
