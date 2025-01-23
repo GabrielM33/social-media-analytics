@@ -21,16 +21,17 @@ interface VideoStats {
 
 const formatNumber = (num: number) => num.toLocaleString();
 
-export default function YoutubeData({
-  videoId = "dQw4w9WgXcQ",
-}: {
-  videoId?: string;
-}) {
+export default function YoutubeData({ videoId = "" }: { videoId?: string }) {
   const [stats, setStats] = useState<VideoStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!videoId) {
+      setError("");
+      return;
+    }
+
     const fetchStats = async () => {
       try {
         setLoading(true);
