@@ -2,7 +2,7 @@ import InputBarYoututbe from "@/components/InputBarYoututbe";
 import YoutubeData from "@/components/YoutubeData";
 import AggregateData from "@/components/AggregateData";
 import InputBarInstagram from "@/components/InputBarInstagram";
-import InputBarTikTok from "@/components/InputBarTiktok";
+import InputBarTikTok from "@/components/InputBarTikTok";
 
 export default function Home() {
   return (
