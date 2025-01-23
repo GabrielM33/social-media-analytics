@@ -78,6 +78,11 @@ async function getAccessToken(code: string): Promise<string> {
 // Third step: Get user videos
 async function getUserVideos(accessToken: string): Promise<TikTokVideo[]> {
   try {
+    console.log(
+      "Fetching videos with access token:",
+      accessToken.slice(0, 10) + "..."
+    );
+
     const response = await axios.post(
       `${TIKTOK_API_URL}/video/list/`,
       {
@@ -90,6 +95,7 @@ async function getUserVideos(accessToken: string): Promise<TikTokVideo[]> {
           "duration",
           "create_time",
         ],
+        max_count: 20,
       },
       {
         headers: {
@@ -99,10 +105,27 @@ async function getUserVideos(accessToken: string): Promise<TikTokVideo[]> {
       }
     );
 
+    console.log("Video API Response:", response.data);
+
+    if (!response.data.data?.videos) {
+      throw new Error("No videos data in response");
+    }
+
     return response.data.data.videos;
   } catch (error: any) {
-    console.error("Video fetch error:", error.response?.data || error.message);
-    throw new Error("Failed to fetch videos");
+    console.error("Video fetch error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers,
+    });
+
+    if (error.response?.data?.error?.code) {
+      throw new Error(
+        `TikTok API Error: ${error.response.data.error.message} (Code: ${error.response.data.error.code})`
+      );
+    }
+    throw new Error(error.message || "Failed to fetch videos");
   }
 }
 
@@ -118,15 +141,25 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log("Processing request with code:", code.slice(0, 10) + "...");
+
     const accessToken = await getAccessToken(code);
+    console.log("Successfully obtained access token");
+
     const videos = await getUserVideos(accessToken);
+    console.log(`Successfully fetched ${videos.length} videos`);
 
     return NextResponse.json({ videos });
   } catch (error: any) {
-    console.error("Error processing request:", error);
+    console.error("Error processing request:", {
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data,
+    });
+
     return NextResponse.json(
       { error: error.message || "Failed to process request" },
-      { status: 500 }
+      { status: error.response?.status || 500 }
     );
   }
 }
