@@ -10,6 +10,9 @@ export default function Home() {
         Social Media API Project
       </h1>
       <div className="p-10 w-full max-w-4xl">
+        <div className="mt-12">
+          <AggregateData />
+        </div>
         <section>
           <h2 className="text-2xl font-semibold mb-4 text-center">YouTube</h2>
           <InputBarYoututbe />
@@ -22,10 +25,6 @@ export default function Home() {
           <h2 className="text-2xl font-semibold mb-4 text-center">TikTok</h2>
           <InputBarTikTok />
         </section>
-      </div>
-
-      <div className="mt-12">
-        <AggregateData />
       </div>
     </div>
   );
