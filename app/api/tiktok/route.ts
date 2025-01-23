@@ -50,6 +50,12 @@ export function GET() {
 // Second step: Exchange code for access token
 async function getAccessToken(code: string): Promise<string> {
   try {
+    if (!process.env.TIKTOK_CLIENT_KEY || !process.env.TIKTOK_CLIENT_SECRET) {
+      throw new Error("Missing TikTok API credentials");
+    }
+
+    console.log("Attempting to exchange code for access token");
+
     const response = await axios.post(
       `${TIKTOK_API_URL}/oauth/token/`,
       {
@@ -66,21 +72,49 @@ async function getAccessToken(code: string): Promise<string> {
       }
     );
 
+    if (!response.data) {
+      throw new Error("Empty response from token endpoint");
+    }
+
+    console.log("Token response structure:", {
+      hasData: !!response.data,
+      dataKeys: Object.keys(response.data),
+      hasAccessToken: !!response.data.access_token,
+    });
+
+    if (!response.data.access_token) {
+      throw new Error("No access token in response");
+    }
+
     return response.data.access_token;
   } catch (error: any) {
-    console.error("Token error:", error.response?.data || error.message);
-    throw new Error(
-      error.response?.data?.error?.message || "Failed to get access token"
-    );
+    console.error("Token exchange error:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      endpoint: `${TIKTOK_API_URL}/oauth/token/`,
+      redirectUri: REDIRECT_URI,
+    });
+
+    if (error.response?.data?.error?.code) {
+      throw new Error(
+        `TikTok Auth Error: ${error.response.data.error.message} (Code: ${error.response.data.error.code})`
+      );
+    }
+    throw new Error(error.message || "Failed to get access token");
   }
 }
 
 // Third step: Get user videos
 async function getUserVideos(accessToken: string): Promise<TikTokVideo[]> {
   try {
+    if (!accessToken) {
+      throw new Error("Access token is required");
+    }
+
     console.log(
       "Fetching videos with access token:",
-      accessToken.slice(0, 10) + "..."
+      accessToken ? `${accessToken.slice(0, 10)}...` : "undefined"
     );
 
     const response = await axios.post(
@@ -105,7 +139,15 @@ async function getUserVideos(accessToken: string): Promise<TikTokVideo[]> {
       }
     );
 
-    console.log("Video API Response:", response.data);
+    if (!response.data) {
+      throw new Error("Empty response from TikTok API");
+    }
+
+    console.log("Video API Response structure:", {
+      hasData: !!response.data,
+      dataKeys: Object.keys(response.data),
+      videosArray: response.data.data?.videos ? "present" : "missing",
+    });
 
     if (!response.data.data?.videos) {
       throw new Error("No videos data in response");
@@ -141,25 +183,35 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("Processing request with code:", code.slice(0, 10) + "...");
+    console.log(
+      "Processing request with code:",
+      code ? `${code.slice(0, 10)}...` : "undefined"
+    );
 
     const accessToken = await getAccessToken(code);
-    console.log("Successfully obtained access token");
+
+    if (!accessToken) {
+      throw new Error("Failed to obtain access token");
+    }
+
+    console.log("Access token obtained successfully");
 
     const videos = await getUserVideos(accessToken);
     console.log(`Successfully fetched ${videos.length} videos`);
 
     return NextResponse.json({ videos });
   } catch (error: any) {
-    console.error("Error processing request:", {
+    const errorDetails = {
       message: error.message,
-      stack: error.stack,
       response: error.response?.data,
-    });
+      status: error.response?.status || 500,
+    };
+
+    console.error("Error processing request:", errorDetails);
 
     return NextResponse.json(
       { error: error.message || "Failed to process request" },
-      { status: error.response?.status || 500 }
+      { status: errorDetails.status }
     );
   }
 }
