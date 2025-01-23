@@ -30,6 +30,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Code required" }, { status: 400 });
     }
 
+    console.log("Starting token exchange with code:", code);
+
     // Exchange code for token
     const tokenResponse = await axios.post(
       "https://open.tiktokapis.com/v2/oauth/token/",
@@ -40,16 +42,35 @@ export async function POST(request: Request) {
         grant_type: "authorization_code",
         redirect_uri: REDIRECT_URI,
         test_app: "1",
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+        },
       }
     );
 
-    const accessToken = tokenResponse.data?.data?.access_token;
+    console.log("Token response:", JSON.stringify(tokenResponse.data, null, 2));
+
+    // Check both possible token locations
+    const accessToken =
+      tokenResponse.data?.access_token ||
+      tokenResponse.data?.data?.access_token;
+
     if (!accessToken) {
+      console.error("Token response structure:", {
+        hasData: !!tokenResponse.data,
+        topLevelKeys: Object.keys(tokenResponse.data || {}),
+        nestedData: tokenResponse.data?.data,
+      });
       return NextResponse.json(
         { error: "Failed to get access token" },
         { status: 401 }
       );
     }
+
+    console.log("Successfully got access token, fetching videos...");
 
     // Get videos
     const videosResponse = await axios.post(
@@ -78,10 +99,17 @@ export async function POST(request: Request) {
       videos: videosResponse.data?.data?.videos || [],
     });
   } catch (error: any) {
-    console.error("TikTok API error:", error.response?.data || error.message);
-    return NextResponse.json(
-      { error: "Failed to process request" },
-      { status: 500 }
-    );
+    console.error("TikTok API error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers,
+    });
+
+    const errorMessage =
+      error.response?.data?.error?.message ||
+      error.message ||
+      "Failed to process request";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
