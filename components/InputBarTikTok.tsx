@@ -154,15 +154,7 @@ export default function InputBarTikTok() {
           {loading ? "Loading..." : "Confirm"}
         </Button>
       </div>
-
-      {error && <div className="text-red-500 p-4">{error}</div>}
-
-      {loading && (
-        <div className="flex items-center justify-center p-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-        </div>
-      )}
-
+      {error && <div className="text-red-500 p-4">{error}</div>}ß
       {metrics && (
         <Card className="w-full max-w-3xl mx-auto">
           <CardHeader>
