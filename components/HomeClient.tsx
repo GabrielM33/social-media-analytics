@@ -2,7 +2,6 @@
 
 import InputBarYoututbe from "@/components/InputBarYoututbe";
 import YoutubeData from "@/components/YoutubeData";
-import InputBarTikTok from "@/components/InputBarTikTok";
 import TikTokData from "@/components/TikTokData";
 import TikTokLogin from "@/components/TikTokLogin";
 import InstagramLogin from "@/components/InstagramLogin";
@@ -11,21 +10,19 @@ import AggregateData from "@/components/AggregateData";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-interface TikTokMetrics {
-  viewCount: number;
-  likeCount: number;
-  commentCount: number;
-  thumbnail?: string;
-  topComments: Array<{
-    text: string;
-    createTime: string;
-    likeCount: number;
-  }>;
+interface TikTokVideo {
+  id: string;
+  title: string;
+  cover_url: string;
+  share_url: string;
+  video_description: string;
+  duration: number;
+  create_time: number;
 }
 
 export default function HomeClient() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [tiktokData, setTiktokData] = useState<TikTokMetrics | null>(null);
+  const [tiktokVideos, setTiktokVideos] = useState<TikTokVideo[] | null>(null);
   const [isTikTokLoading, setIsTikTokLoading] = useState(false);
   const [tiktokError, setTiktokError] = useState<string | undefined>();
   const [tikTokAuthCode, setTikTokAuthCode] = useState<string | null>(() => {
@@ -38,7 +35,7 @@ export default function HomeClient() {
   });
   const searchParams = useSearchParams();
 
-  // Check for auth code in URL on mount
+  // Check for auth code in URL on mount and fetch videos if authenticated
   useEffect(() => {
     const code = searchParams.get("code");
     if (code) {
@@ -49,6 +46,9 @@ export default function HomeClient() {
   // Set initial authentication state based on auth code
   useEffect(() => {
     setIsAuthenticated(!!tikTokAuthCode);
+    if (tikTokAuthCode) {
+      fetchTikTokVideos(tikTokAuthCode);
+    }
   }, [tikTokAuthCode]);
 
   const handleTikTokAuthSuccess = (code: string) => {
@@ -59,12 +59,7 @@ export default function HomeClient() {
     }
   };
 
-  const handleTikTokSubmit = async (url: string) => {
-    if (!tikTokAuthCode) {
-      setTiktokError("TikTok authentication required");
-      return;
-    }
-
+  const fetchTikTokVideos = async (code: string) => {
     setIsTikTokLoading(true);
     setTiktokError(undefined);
 
@@ -74,19 +69,19 @@ export default function HomeClient() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url, code: tikTokAuthCode }),
+        body: JSON.stringify({ code }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch TikTok data");
+        throw new Error(errorData.error || "Failed to fetch TikTok videos");
       }
 
       const data = await response.json();
-      setTiktokData(data);
+      setTiktokVideos(data.videos);
     } catch (err) {
       setTiktokError(err instanceof Error ? err.message : "An error occurred");
-      setTiktokData(null);
+      setTiktokVideos(null);
     } finally {
       setIsTikTokLoading(false);
     }
@@ -111,13 +106,11 @@ export default function HomeClient() {
           {/* TikTok Section */}
           {isAuthenticated && (
             <section>
-              <h2 className="text-2xl font-semibold mb-4">TikTok Analytics</h2>
-              <InputBarTikTok
-                onSubmit={handleTikTokSubmit}
-                isLoading={isTikTokLoading}
-              />
+              <h2 className="text-2xl font-semibold mb-4">
+                Your TikTok Videos
+              </h2>
               <TikTokData
-                data={tiktokData}
+                data={tiktokVideos}
                 isLoading={isTikTokLoading}
                 error={tiktokError}
               />

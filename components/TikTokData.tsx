@@ -1,17 +1,15 @@
-interface TikTokMetrics {
-  viewCount: number;
-  likeCount: number;
-  commentCount: number;
-  topComments: Array<{
-    text: string;
-    createTime: string;
-    likeCount: number;
-  }>;
-  thumbnail?: string;
+interface TikTokVideo {
+  id: string;
+  title: string;
+  cover_url: string;
+  share_url: string;
+  video_description: string;
+  duration: number;
+  create_time: number;
 }
 
 interface TikTokDataProps {
-  data: TikTokMetrics | null;
+  data: TikTokVideo[] | null;
   isLoading: boolean;
   error?: string;
 }
@@ -23,11 +21,17 @@ export default function TikTokData({
 }: TikTokDataProps) {
   if (isLoading) {
     return (
-      <div className="w-full max-w-2xl mx-auto mt-8 p-4 bg-white rounded-lg shadow animate-pulse">
-        <div className="h-48 bg-gray-200 rounded-md mb-4"></div>
-        <div className="space-y-3">
-          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      <div className="w-full max-w-4xl mx-auto mt-8 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-lg shadow animate-pulse">
+              <div className="h-48 bg-gray-200 rounded-t-lg"></div>
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -41,69 +45,64 @@ export default function TikTokData({
     );
   }
 
-  if (!data) {
-    return null;
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-full max-w-2xl mx-auto mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <p className="text-gray-600 text-center">No videos found</p>
+      </div>
+    );
   }
 
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)}M`;
-    }
-    if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`;
-    }
-    return num.toString();
+  const formatDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
+  const formatDate = (timestamp: number): string => {
+    return new Date(timestamp * 1000).toLocaleDateString();
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto mt-8 space-y-6">
-      {/* Metrics Overview */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">Video Metrics</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">Views</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {formatNumber(data.viewCount)}
-            </p>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">Likes</p>
-            <p className="text-2xl font-bold text-red-600">
-              {formatNumber(data.likeCount)}
-            </p>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">Comments</p>
-            <p className="text-2xl font-bold text-green-600">
-              {formatNumber(data.commentCount)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Top Comments */}
-      {data.topComments.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Top Comments</h2>
-          <div className="space-y-4">
-            {data.topComments.map((comment, index) => (
-              <div
-                key={index}
-                className="border-b last:border-b-0 pb-3 last:pb-0"
-              >
-                <p className="text-gray-800">{comment.text}</p>
-                <div className="flex justify-between mt-2 text-sm text-gray-500">
-                  <span>
-                    {new Date(comment.createTime).toLocaleDateString()}
-                  </span>
-                  <span>{formatNumber(comment.likeCount)} likes</span>
-                </div>
+    <div className="w-full max-w-4xl mx-auto mt-8 p-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {data.map((video) => (
+          <div
+            key={video.id}
+            className="bg-white rounded-lg shadow-lg overflow-hidden"
+          >
+            <div className="relative">
+              <img
+                src={video.cover_url}
+                alt={video.title}
+                className="w-full h-48 object-cover"
+              />
+              <span className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm">
+                {formatDuration(video.duration)}
+              </span>
+            </div>
+            <div className="p-4">
+              <h3 className="font-semibold text-lg mb-2 line-clamp-2">
+                {video.title}
+              </h3>
+              <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+                {video.video_description}
+              </p>
+              <div className="flex justify-between items-center text-sm text-gray-500">
+                <span>{formatDate(video.create_time)}</span>
+                <a
+                  href={video.share_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  Watch on TikTok
+                </a>
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
