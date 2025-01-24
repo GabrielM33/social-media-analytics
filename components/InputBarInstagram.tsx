@@ -200,17 +200,17 @@ export default function InputBarInstagram() {
                 <div className="font-semibold">
                   {formatNumber(metrics.views)}
                 </div>
-                <div className="text-center">
-                  <div className="text-sm text-muted-foreground">Likes</div>
-                  <div className="font-semibold">
-                    {formatNumber(metrics.likes)}
-                  </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">Likes</div>
+                <div className="font-semibold">
+                  {formatNumber(metrics.likes)}
                 </div>
-                <div className="text-center">
-                  <div className="text-sm text-muted-foreground">Comments</div>
-                  <div className="font-semibold">
-                    {formatNumber(metrics.comments)}
-                  </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">Comments</div>
+                <div className="font-semibold">
+                  {formatNumber(metrics.comments)}
                 </div>
               </div>
             </div>
