@@ -21,23 +21,12 @@ interface TikTokApiResponse {
   };
 }
 
-interface RawComment {
-  text?: string;
-  author?: {
-    uniqueId?: string;
-    nickname?: string;
-  };
-  diggCount?: number;
-  createTime?: number;
-}
-
 interface ApifyRun {
   defaultDatasetId: string;
 }
 
 interface ApifyDataset {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  items: any[];
+  items: TikTokApiResponse[];
 }
 
 // Add timeout utility
@@ -61,126 +50,89 @@ async function runApifyActors(
         useApifyProxy: true,
         apifyProxyGroups: ["RESIDENTIAL"],
       },
-      // Simplified data extraction
-      extendOutputFunction: `async ({ page, request }) => {
+      // Simpler scraping approach
+      extendOutputFunction: `async ({ page }) => {
         try {
-          await page.waitForSelector('strong[data-e2e="like-count"]', { timeout: 10000 });
-          
-          const data = {
-            diggCount: await page.$eval('strong[data-e2e="like-count"]', el => el.textContent || "0"),
-            commentCount: await page.$eval('strong[data-e2e="comment-count"]', el => el.textContent || "0"),
-            playCount: await page.$eval('strong[data-e2e="video-views"]', el => el.textContent || "0"),
-            desc: await page.$eval('div[data-e2e="video-desc"]', el => el.textContent || "")
+          // Wait for the video to load
+          await page.waitForFunction(() => {
+            const likes = document.querySelector('strong[data-e2e="like-count"]');
+            const comments = document.querySelector('strong[data-e2e="comment-count"]');
+            const views = document.querySelector('strong[data-e2e="video-views"]');
+            return likes && comments && views;
+          }, { timeout: 15000 });
+
+          // Get text content directly from the DOM
+          const likes = document.querySelector('strong[data-e2e="like-count"]')?.textContent || "0";
+          const comments = document.querySelector('strong[data-e2e="comment-count"]')?.textContent || "0";
+          const views = document.querySelector('strong[data-e2e="video-views"]')?.textContent || "0";
+          const desc = document.querySelector('div[data-e2e="video-desc"]')?.textContent || "";
+
+          return {
+            diggCount: likes,
+            commentCount: comments,
+            playCount: views,
+            desc: desc
           };
-          return data;
         } catch (e) {
-          console.error('Error in extendOutputFunction:', e);
-          return null;
+          console.error('Scraping error:', e);
+          return {
+            diggCount: "0",
+            commentCount: "0",
+            playCount: "0",
+            desc: "No description available"
+          };
         }
       }`,
     };
 
-    // Increase timeout for production
-    const timeout = process.env.NODE_ENV === "production" ? 60000 : 30000;
+    // Increase memory limit and timeout for production
+    const actorOptions = {
+      memory: process.env.NODE_ENV === "production" ? 2048 : 1024,
+      timeoutSecs: process.env.NODE_ENV === "production" ? 120 : 60,
+    };
 
-    // Run only metrics actor since we're having issues
-    const metricsRun = (await Promise.race([
-      client.actor("S5h7zRLfKFEr8pdj7").call(input),
-      timeoutPromise(timeout),
-    ])) as ApifyRun;
+    // Run only metrics actor with increased resources
+    const metricsRun = await client
+      .actor("S5h7zRLfKFEr8pdj7")
+      .call(input, actorOptions);
 
     if (!metricsRun?.defaultDatasetId) {
       throw new Error("Invalid Apify run response");
     }
 
-    // Use a dummy comments run to maintain interface compatibility
+    // Use a dummy comments run
     const commentsRun = { defaultDatasetId: "dummy" };
 
     return { metricsRun, commentsRun };
   } catch (error: unknown) {
-    if (error instanceof Error && error.message === "Operation timed out") {
-      throw new Error("Request timed out. Please try again.");
-    }
-    console.error("Apify actor error:", error);
-    throw new Error("Failed to fetch data from TikTok. Please try again.");
+    console.error("Detailed Apify error:", error);
+    throw new Error("Failed to fetch TikTok data. Please try again.");
   }
 }
 
 async function fetchDatasets(
-  metricsRun: ApifyRun,
-  commentsRun: ApifyRun
-): Promise<{ metricsData: ApifyDataset; commentsData: ApifyDataset }> {
+  metricsRun: ApifyRun
+): Promise<{ metricsData: ApifyDataset }> {
   const isProduction = process.env.NODE_ENV === "production";
-  const retryAttempts = isProduction ? 5 : 1; // More retries in production
-  const waitTime = isProduction ? 5000 : 2000; // Longer wait in production
-  const timeout = isProduction ? 20000 : 10000; // Longer timeout in production
+  const waitTime = isProduction ? 5000 : 2000;
 
-  let lastError: Error | null = null;
+  // Wait for initial dataset population
+  await new Promise((resolve) => setTimeout(resolve, waitTime));
 
-  for (let attempt = 1; attempt <= retryAttempts; attempt++) {
-    try {
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
+  try {
+    const metricsData = await client
+      .dataset(metricsRun.defaultDatasetId)
+      .listItems();
 
-      // In production, fetch sequentially to reduce memory usage
-      if (isProduction) {
-        const metricsData = (await Promise.race([
-          client.dataset(metricsRun.defaultDatasetId).listItems(),
-          timeoutPromise(timeout),
-        ])) as ApifyDataset;
-
-        const commentsData = (await Promise.race([
-          client.dataset(commentsRun.defaultDatasetId).listItems(),
-          timeoutPromise(timeout),
-        ])) as ApifyDataset;
-
-        if (metricsData?.items?.[0]) {
-          return { metricsData, commentsData };
-        }
-      } else {
-        // In development, fetch in parallel
-        const [metricsData, commentsData] = (await Promise.race([
-          Promise.all([
-            client.dataset(metricsRun.defaultDatasetId).listItems(),
-            client.dataset(commentsRun.defaultDatasetId).listItems(),
-          ]),
-          timeoutPromise(timeout),
-        ])) as [ApifyDataset, ApifyDataset];
-
-        if (metricsData?.items?.[0]) {
-          return { metricsData, commentsData };
-        }
-      }
-
-      console.log(`Attempt ${attempt}/${retryAttempts}: No data yet`);
-    } catch (error: unknown) {
-      lastError =
-        error instanceof Error ? error : new Error("Unknown error occurred");
-      console.error(`Attempt ${attempt}/${retryAttempts} failed:`, lastError);
-
-      if (attempt === retryAttempts) {
-        if (error instanceof Error && error.message === "Operation timed out") {
-          throw new Error("Data retrieval timed out. Please try again.");
-        }
-        throw lastError;
-      }
+    if (!metricsData?.items?.[0]) {
+      throw new Error("No data found in the dataset");
     }
+
+    return { metricsData };
+  } catch (error) {
+    console.error("Dataset fetch error:", error);
+    throw new Error("Failed to retrieve TikTok data");
   }
-
-  throw lastError || new Error("Failed to fetch data after all retries");
-}
-
-function processComments(commentsData: ApifyDataset) {
-  return Array.isArray(commentsData.items) && commentsData.items.length > 0
-    ? commentsData.items.slice(0, 5).map((comment: RawComment) => ({
-        text: comment.text || "",
-        author:
-          comment.author?.nickname || comment.author?.uniqueId || "Anonymous",
-        likes: comment.diggCount || 0,
-        timestamp: comment.createTime
-          ? new Date(comment.createTime * 1000).toISOString()
-          : null,
-      }))
-    : [];
 }
 
 function parseNumber(value: string | number | undefined): number {
@@ -204,19 +156,14 @@ export async function POST(request: Request) {
 
     const result = await Promise.race([
       (async () => {
-        const { metricsRun, commentsRun } = await runApifyActors(videoUrl);
-        const { metricsData, commentsData } = await fetchDatasets(
-          metricsRun,
-          commentsRun
-        );
+        const { metricsRun } = await runApifyActors(videoUrl);
+        const { metricsData } = await fetchDatasets(metricsRun);
 
         const tiktokData = metricsData.items[0] as TikTokApiResponse;
 
         if (!tiktokData) {
           throw new Error("No data returned from TikTok");
         }
-
-        const comments = processComments(commentsData);
 
         // Parse numeric values safely
         return {
@@ -225,7 +172,7 @@ export async function POST(request: Request) {
           comments: parseNumber(tiktokData.commentCount),
           views: parseNumber(tiktokData.playCount),
           timestamp: new Date().toISOString(),
-          commentsList: comments,
+          commentsList: [],
         };
       })(),
       timeoutPromise(45000),
