@@ -12,12 +12,13 @@ interface VideoMetrics {
   comments: number;
   views: number;
   timestamp: string;
+  commentsList: CommentData[];
 }
 
 interface CommentData {
   text: string;
   author: string;
-  timestamp: string;
+  timestamp: string | null;
   likes: number;
 }
 
@@ -28,7 +29,6 @@ const formatNumber = (num: number | undefined | null): string => {
 export default function InputBarTikTok() {
   const [videoUrl, setVideoUrl] = useState("");
   const [metrics, setMetrics] = useState<VideoMetrics | null>(null);
-  const [comments, setComments] = useState<CommentData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setTiktokMetrics } = useMetrics();
@@ -55,8 +55,7 @@ export default function InputBarTikTok() {
       setLoading(true);
       setError(null);
 
-      // Fetch metrics
-      const metricsResponse = await fetch("/api/tiktok-metrics", {
+      const response = await fetch("/api/tiktok", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -64,30 +63,13 @@ export default function InputBarTikTok() {
         body: JSON.stringify({ videoUrl }),
       });
 
-      if (!metricsResponse.ok) {
-        const errorData = await metricsResponse.json();
-        throw new Error(errorData.error || "Failed to fetch video metrics");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch video data");
       }
 
-      const metricsData = await metricsResponse.json();
-      setMetrics(metricsData);
-
-      // Fetch comments
-      const commentsResponse = await fetch("/api/tiktok-comments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ postURLs: [videoUrl] }),
-      });
-
-      if (!commentsResponse.ok) {
-        const errorData = await commentsResponse.json();
-        throw new Error(errorData.error || "Failed to fetch comments");
-      }
-
-      const commentsData = await commentsResponse.json();
-      setComments(commentsData.comments);
+      const data = await response.json();
+      setMetrics(data);
     } catch (err) {
       console.error("Error fetching TikTok data:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch data");
@@ -144,15 +126,17 @@ export default function InputBarTikTok() {
               <div className="text-sm text-muted-foreground font-medium">
                 Top Comments
               </div>
-              {comments.length > 0 ? (
-                comments.map((comment, index) => (
+              {metrics.commentsList.length > 0 ? (
+                metrics.commentsList.map((comment, index) => (
                   <div key={index} className="border-b border-border pb-3">
                     <div className="flex items-start justify-between">
                       <div className="font-medium text-sm">
                         {comment.author}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {new Date(comment.timestamp).toLocaleDateString()}
+                        {comment.timestamp
+                          ? new Date(comment.timestamp).toLocaleDateString()
+                          : "No date"}
                       </div>
                     </div>
                     <div className="text-sm mt-1">{comment.text}</div>
