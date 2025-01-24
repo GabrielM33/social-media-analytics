@@ -67,18 +67,39 @@ async function fetchDatasets(
   metricsRun: ApifyRun,
   commentsRun: ApifyRun
 ): Promise<{ metricsData: ApifyDataset; commentsData: ApifyDataset }> {
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  // Wait longer in production for datasets to be ready
+  const isProduction = process.env.NODE_ENV === "production";
+  const retryAttempts = isProduction ? 3 : 1;
+  const waitTime = isProduction ? 3000 : 2000;
 
-  const [metricsData, commentsData] = await Promise.all([
-    client.dataset(metricsRun.defaultDatasetId).listItems(),
-    client.dataset(commentsRun.defaultDatasetId).listItems(),
-  ]);
+  for (let attempt = 1; attempt <= retryAttempts; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, waitTime));
 
-  if (!metricsData?.items?.[0]) {
-    throw new Error("No data found for this video");
+    try {
+      const [metricsData, commentsData] = await Promise.all([
+        client.dataset(metricsRun.defaultDatasetId).listItems(),
+        client.dataset(commentsRun.defaultDatasetId).listItems(),
+      ]);
+
+      if (metricsData?.items?.[0]) {
+        return { metricsData, commentsData };
+      }
+
+      if (attempt === retryAttempts) {
+        throw new Error(`No data found after ${retryAttempts} attempts`);
+      }
+
+      console.log(`Attempt ${attempt}: No data yet, retrying...`);
+    } catch (error) {
+      if (attempt === retryAttempts) {
+        throw error;
+      }
+      console.log(`Attempt ${attempt}: Failed to fetch data, retrying...`);
+    }
   }
 
-  return { metricsData, commentsData };
+  // TypeScript needs this, but it will never be reached
+  throw new Error("Failed to fetch data");
 }
 
 function processComments(commentsData: ApifyDataset) {
