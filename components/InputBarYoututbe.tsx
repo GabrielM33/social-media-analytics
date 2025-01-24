@@ -40,6 +40,7 @@ export default function InputBar() {
         views: parseInt(stats.views) || 0,
         likes: parseInt(stats.likes) || 0,
         comments: parseInt(stats.comments) || 0,
+        top_comments: stats.top_comments || [],
       });
     } else {
       setYoutubeMetrics(null);

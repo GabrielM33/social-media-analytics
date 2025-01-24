@@ -33,6 +33,7 @@ export default function InputBarInstagram() {
         views: metrics.views,
         likes: metrics.likes,
         comments: metrics.comments,
+        top_comments: metrics.top_comments || [],
       });
     } else {
       setInstagramMetrics(null);

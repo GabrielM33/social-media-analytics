@@ -2,32 +2,65 @@
 
 import React, { createContext, useContext, useState } from "react";
 
-interface PlatformMetrics {
+interface YouTubeComment {
+  text: string;
+  author: string;
+  publishedAt: string;
+  likeCount: number;
+}
+
+interface TikTokComment {
+  text: string;
+  author: string;
+  timestamp: string | null;
+  likes: number;
+}
+
+interface InstagramComment {
+  text: string;
+  author: string;
+  timestamp: string;
+  likes: number;
+}
+
+interface BasePlatformMetrics {
   views: number;
   likes: number;
   comments: number;
 }
 
+interface YouTubeMetrics extends BasePlatformMetrics {
+  top_comments?: YouTubeComment[];
+}
+
+interface TikTokMetrics extends BasePlatformMetrics {
+  commentsList?: TikTokComment[];
+}
+
+interface InstagramMetrics extends BasePlatformMetrics {
+  top_comments?: InstagramComment[];
+}
+
 interface MetricsContextType {
-  youtubeMetrics: PlatformMetrics | null;
-  tiktokMetrics: PlatformMetrics | null;
-  instagramMetrics: PlatformMetrics | null;
-  setYoutubeMetrics: (metrics: PlatformMetrics | null) => void;
-  setTiktokMetrics: (metrics: PlatformMetrics | null) => void;
-  setInstagramMetrics: (metrics: PlatformMetrics | null) => void;
+  youtubeMetrics: YouTubeMetrics | null;
+  tiktokMetrics: TikTokMetrics | null;
+  instagramMetrics: InstagramMetrics | null;
+  setYoutubeMetrics: (metrics: YouTubeMetrics | null) => void;
+  setTiktokMetrics: (metrics: TikTokMetrics | null) => void;
+  setInstagramMetrics: (metrics: InstagramMetrics | null) => void;
 }
 
 const MetricsContext = createContext<MetricsContextType | undefined>(undefined);
 
 export function MetricsProvider({ children }: { children: React.ReactNode }) {
-  const [youtubeMetrics, setYoutubeMetrics] = useState<PlatformMetrics | null>(
+  const [youtubeMetrics, setYoutubeMetrics] = useState<YouTubeMetrics | null>(
     null
   );
-  const [tiktokMetrics, setTiktokMetrics] = useState<PlatformMetrics | null>(
+  const [tiktokMetrics, setTiktokMetrics] = useState<TikTokMetrics | null>(
     null
   );
   const [instagramMetrics, setInstagramMetrics] =
-    useState<PlatformMetrics | null>(null);
+    useState<InstagramMetrics | null>(null);
 
   return (
     <MetricsContext.Provider

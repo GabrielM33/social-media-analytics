@@ -39,6 +39,7 @@ export default function InputBarTikTok() {
         views: metrics.views,
         likes: metrics.likes,
         comments: metrics.comments,
+        commentsList: metrics.commentsList || [],
       });
     } else {
       setTiktokMetrics(null);
