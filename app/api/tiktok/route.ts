@@ -57,29 +57,71 @@ async function runApifyActors(
       shouldDownloadSubtitles: false,
       shouldDownloadSlideshowImages: false,
       maxItems: 1,
+      // Reduce memory usage
+      proxyConfiguration: {
+        useApifyProxy: true,
+      },
+      // Reduce memory footprint
+      extendOutputFunction: `($) => {
+        return {
+          diggCount: $('strong[data-e2e="like-count"]').text(),
+          commentCount: $('strong[data-e2e="comment-count"]').text(),
+          playCount: $('strong[data-e2e="video-views"]').text(),
+          desc: $('div[data-e2e="video-desc"]').text()
+        }
+      }`,
     };
 
-    // Add 30s timeout for Apify operations
-    const [metricsRun, commentsRun] = (await Promise.race([
-      Promise.all([
+    // Increase timeout for production
+    const timeout = process.env.NODE_ENV === "production" ? 60000 : 30000;
+
+    // Run actors sequentially in production to reduce memory usage
+    if (process.env.NODE_ENV === "production") {
+      const metricsRun = (await Promise.race([
         client.actor("S5h7zRLfKFEr8pdj7").call(input),
-        client
-          .actor("BDec00yAmCm1QbMEI")
-          .call({ ...input, commentsPerPost: 5 }),
-      ]),
-      timeoutPromise(30000),
-    ])) as [ApifyRun, ApifyRun];
+        timeoutPromise(timeout),
+      ])) as ApifyRun;
 
-    if (!metricsRun?.defaultDatasetId || !commentsRun?.defaultDatasetId) {
-      throw new Error("Invalid Apify run response");
+      const commentsRun = (await Promise.race([
+        client.actor("BDec00yAmCm1QbMEI").call({
+          ...input,
+          commentsPerPost: 5,
+          maxComments: 5,
+        }),
+        timeoutPromise(timeout),
+      ])) as ApifyRun;
+
+      if (!metricsRun?.defaultDatasetId || !commentsRun?.defaultDatasetId) {
+        throw new Error("Invalid Apify run response");
+      }
+
+      return { metricsRun, commentsRun };
+    } else {
+      // In development, run in parallel
+      const [metricsRun, commentsRun] = (await Promise.race([
+        Promise.all([
+          client.actor("S5h7zRLfKFEr8pdj7").call(input),
+          client.actor("BDec00yAmCm1QbMEI").call({
+            ...input,
+            commentsPerPost: 5,
+            maxComments: 5,
+          }),
+        ]),
+        timeoutPromise(timeout),
+      ])) as [ApifyRun, ApifyRun];
+
+      if (!metricsRun?.defaultDatasetId || !commentsRun?.defaultDatasetId) {
+        throw new Error("Invalid Apify run response");
+      }
+
+      return { metricsRun, commentsRun };
     }
-
-    return { metricsRun, commentsRun };
   } catch (error: unknown) {
     if (error instanceof Error && error.message === "Operation timed out") {
       throw new Error("Request timed out. Please try again.");
     }
-    throw error;
+    console.error("Apify actor error:", error);
+    throw new Error("Failed to fetch data from TikTok. Please try again.");
   }
 }
 
@@ -88,39 +130,62 @@ async function fetchDatasets(
   commentsRun: ApifyRun
 ): Promise<{ metricsData: ApifyDataset; commentsData: ApifyDataset }> {
   const isProduction = process.env.NODE_ENV === "production";
-  const retryAttempts = isProduction ? 3 : 1;
-  const waitTime = isProduction ? 3000 : 2000;
+  const retryAttempts = isProduction ? 5 : 1; // More retries in production
+  const waitTime = isProduction ? 5000 : 2000; // Longer wait in production
+  const timeout = isProduction ? 20000 : 10000; // Longer timeout in production
+
+  let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= retryAttempts; attempt++) {
     try {
       await new Promise((resolve) => setTimeout(resolve, waitTime));
 
-      const [metricsData, commentsData] = (await Promise.race([
-        Promise.all([
+      // In production, fetch sequentially to reduce memory usage
+      if (isProduction) {
+        const metricsData = (await Promise.race([
           client.dataset(metricsRun.defaultDatasetId).listItems(),
+          timeoutPromise(timeout),
+        ])) as ApifyDataset;
+
+        const commentsData = (await Promise.race([
           client.dataset(commentsRun.defaultDatasetId).listItems(),
-        ]),
-        timeoutPromise(10000),
-      ])) as [ApifyDataset, ApifyDataset];
+          timeoutPromise(timeout),
+        ])) as ApifyDataset;
 
-      if (metricsData?.items?.[0]) {
-        return { metricsData, commentsData };
+        if (metricsData?.items?.[0]) {
+          return { metricsData, commentsData };
+        }
+      } else {
+        // In development, fetch in parallel
+        const [metricsData, commentsData] = (await Promise.race([
+          Promise.all([
+            client.dataset(metricsRun.defaultDatasetId).listItems(),
+            client.dataset(commentsRun.defaultDatasetId).listItems(),
+          ]),
+          timeoutPromise(timeout),
+        ])) as [ApifyDataset, ApifyDataset];
+
+        if (metricsData?.items?.[0]) {
+          return { metricsData, commentsData };
+        }
       }
 
-      if (attempt === retryAttempts) {
-        throw new Error("No data found after multiple attempts");
-      }
+      console.log(`Attempt ${attempt}/${retryAttempts}: No data yet`);
     } catch (error: unknown) {
+      lastError =
+        error instanceof Error ? error : new Error("Unknown error occurred");
+      console.error(`Attempt ${attempt}/${retryAttempts} failed:`, lastError);
+
       if (attempt === retryAttempts) {
         if (error instanceof Error && error.message === "Operation timed out") {
           throw new Error("Data retrieval timed out. Please try again.");
         }
-        throw error;
+        throw lastError;
       }
     }
   }
 
-  throw new Error("Failed to fetch data");
+  throw lastError || new Error("Failed to fetch data after all retries");
 }
 
 function processComments(commentsData: ApifyDataset) {
