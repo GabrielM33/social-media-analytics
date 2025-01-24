@@ -19,13 +19,6 @@ interface TikTokApiResponse {
     commentCount?: number;
     playCount?: number;
   };
-  comments?: Array<{
-    text?: string;
-    author?: string;
-    uniqueId?: string;
-    createTime?: number;
-    diggCount?: number;
-  }>;
 }
 
 export async function POST(request: Request) {
@@ -76,12 +69,6 @@ export async function POST(request: Request) {
       comments: tiktokData.commentCount || tiktokData.stats?.commentCount || 0,
       views: tiktokData.playCount || tiktokData.stats?.playCount || 0,
       timestamp: new Date().toISOString(),
-      top_comments: (tiktokData.comments || []).slice(0, 5).map((comment) => ({
-        text: comment.text || "",
-        author: comment.author || comment.uniqueId || "Unknown",
-        timestamp: new Date((comment.createTime || 0) * 1000).toISOString(),
-        likes: comment.diggCount || 0,
-      })),
     };
 
     return NextResponse.json(transformedMetrics);

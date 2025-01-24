@@ -12,7 +12,6 @@ interface VideoMetrics {
   comments: number;
   views: number;
   timestamp: string;
-  top_comments: CommentData[];
 }
 
 interface CommentData {
@@ -22,13 +21,14 @@ interface CommentData {
   likes: number;
 }
 
-const formatNumber = (num: number): string => {
-  return num.toLocaleString();
+const formatNumber = (num: number | undefined | null): string => {
+  return num?.toLocaleString() || "0";
 };
 
 export default function InputBarTikTok() {
   const [videoUrl, setVideoUrl] = useState("");
   const [metrics, setMetrics] = useState<VideoMetrics | null>(null);
+  const [comments, setComments] = useState<CommentData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setTiktokMetrics } = useMetrics();
@@ -55,7 +55,8 @@ export default function InputBarTikTok() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch("/api/tiktok-metrics", {
+      // Fetch metrics
+      const metricsResponse = await fetch("/api/tiktok-metrics", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -63,18 +64,33 @@ export default function InputBarTikTok() {
         body: JSON.stringify({ videoUrl }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch video data");
+      if (!metricsResponse.ok) {
+        const errorData = await metricsResponse.json();
+        throw new Error(errorData.error || "Failed to fetch video metrics");
       }
 
-      const transformedMetrics = await response.json();
-      setMetrics(transformedMetrics);
+      const metricsData = await metricsResponse.json();
+      setMetrics(metricsData);
+
+      // Fetch comments
+      const commentsResponse = await fetch("/api/tiktok-comments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ postURLs: [videoUrl] }),
+      });
+
+      if (!commentsResponse.ok) {
+        const errorData = await commentsResponse.json();
+        throw new Error(errorData.error || "Failed to fetch comments");
+      }
+
+      const commentsData = await commentsResponse.json();
+      setComments(commentsData.comments);
     } catch (err) {
       console.error("Error fetching TikTok data:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch video data"
-      );
+      setError(err instanceof Error ? err.message : "Failed to fetch data");
     } finally {
       setLoading(false);
     }
@@ -128,8 +144,8 @@ export default function InputBarTikTok() {
               <div className="text-sm text-muted-foreground font-medium">
                 Top Comments
               </div>
-              {metrics.top_comments.length > 0 ? (
-                metrics.top_comments.map((comment, index) => (
+              {comments.length > 0 ? (
+                comments.map((comment, index) => (
                   <div key={index} className="border-b border-border pb-3">
                     <div className="flex items-start justify-between">
                       <div className="font-medium text-sm">
