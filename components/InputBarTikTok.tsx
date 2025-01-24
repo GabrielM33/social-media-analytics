@@ -64,13 +64,17 @@ export default function InputBarTikTok() {
         body: JSON.stringify({ videoUrl }),
       });
 
+      // Get the raw text first to help debug production issues
+      const responseText = await response.text();
+
       let data;
       try {
-        data = await response.json();
+        data = JSON.parse(responseText);
       } catch (parseError) {
-        console.error("Error parsing JSON response:", parseError);
+        console.error("Raw response:", responseText);
+        console.error("Parse error:", parseError);
         throw new Error(
-          "Server returned an invalid response. Please try again later."
+          "Server returned an invalid response. Please try again in a few moments."
         );
       }
 
@@ -84,7 +88,7 @@ export default function InputBarTikTok() {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to fetch data. Please check if the URL is correct and try again."
+          : "Failed to fetch data. Please try again in a few moments."
       );
       setMetrics(null);
     } finally {
