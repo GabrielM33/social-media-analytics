@@ -12,18 +12,18 @@ interface VideoMetrics {
   comments: number;
   views: number;
   timestamp: string;
-  top_comments: CommentData[];
+  commentsList: CommentData[];
 }
 
 interface CommentData {
   text: string;
   author: string;
-  timestamp: string;
+  timestamp: string | null;
   likes: number;
 }
 
-const formatNumber = (num: number): string => {
-  return num.toLocaleString();
+const formatNumber = (num: number | undefined | null): string => {
+  return num?.toLocaleString() || "0";
 };
 
 export default function InputBarTikTok() {
@@ -63,18 +63,29 @@ export default function InputBarTikTok() {
         body: JSON.stringify({ videoUrl }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch video data");
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error("Error parsing JSON response:", parseError);
+        throw new Error(
+          "Server returned an invalid response. Please try again later."
+        );
       }
 
-      const transformedMetrics = await response.json();
-      setMetrics(transformedMetrics);
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to fetch video data");
+      }
+
+      setMetrics(data);
     } catch (err) {
       console.error("Error fetching TikTok data:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to fetch video data"
+        err instanceof Error
+          ? err.message
+          : "Failed to fetch data. Please check if the URL is correct and try again."
       );
+      setMetrics(null);
     } finally {
       setLoading(false);
     }
@@ -94,9 +105,14 @@ export default function InputBarTikTok() {
           placeholder="Enter TikTok video URL"
           value={videoUrl}
           onChange={(e) => setVideoUrl(e.target.value)}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              handleFetch();
+            }
+          }}
         />
         <Button onClick={handleFetch} disabled={loading || !videoUrl}>
-          Confirm
+          {loading ? "Loading..." : "Confirm"}
         </Button>
       </div>
 
@@ -106,7 +122,12 @@ export default function InputBarTikTok() {
         </div>
       )}
 
-      {error && <div className="text-red-500 p-4">{error}</div>}
+      {error && (
+        <div className="text-red-500 p-4 text-center bg-red-50 rounded-md">
+          {error}
+        </div>
+      )}
+
       {metrics && (
         <Card className="w-full max-w-3xl mx-auto">
           <CardHeader>
@@ -128,15 +149,17 @@ export default function InputBarTikTok() {
               <div className="text-sm text-muted-foreground font-medium">
                 Top Comments
               </div>
-              {metrics.top_comments.length > 0 ? (
-                metrics.top_comments.map((comment, index) => (
+              {metrics.commentsList.length > 0 ? (
+                metrics.commentsList.map((comment, index) => (
                   <div key={index} className="border-b border-border pb-3">
                     <div className="flex items-start justify-between">
                       <div className="font-medium text-sm">
                         {comment.author}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {new Date(comment.timestamp).toLocaleDateString()}
+                        {comment.timestamp
+                          ? new Date(comment.timestamp).toLocaleDateString()
+                          : "No date"}
                       </div>
                     </div>
                     <div className="text-sm mt-1">{comment.text}</div>
