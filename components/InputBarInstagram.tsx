@@ -2,7 +2,6 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ApifyClient } from "apify-client";
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useMetrics } from "@/lib/MetricsContext";
@@ -21,21 +20,6 @@ interface CommentData {
   author: string;
   timestamp: string;
   likes: number;
-}
-
-interface ApifyReelData {
-  likesCount: number;
-  commentsCount: number;
-  videoPlayCount: number;
-  timestamp: string;
-  type: string;
-  caption: string;
-  comments: Array<{
-    text: string;
-    ownerUsername: string;
-    timestamp: string;
-    likesCount: number;
-  }>;
 }
 
 const formatNumber = (num: number) => num.toLocaleString();
@@ -59,98 +43,26 @@ export default function InputBarInstagram() {
     }
   }, [metrics, setInstagramMetrics]);
 
-  const extractReelId = (url: string): string | null => {
-    // Remove @ and leading/trailing whitespace
-    url = url.replace(/^@/, "").trim();
-
-    // Try to extract reel ID from various URL formats
-    const patterns = [
-      /instagram\.com\/reels?\/([A-Za-z0-9_-]+)/, // Matches /reels/ or /reel/
-      /instagram\.com\/p\/([A-Za-z0-9_-]+)/, // Matches /p/ format
-      /^([A-Za-z0-9_-]+)$/, // Matches just the ID
-    ];
-
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match?.[1]) return match[1];
-    }
-
-    return null;
-  };
-
   const fetchReelMetrics = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const reelId = extractReelId(reelUrl);
-      if (!reelId) {
-        throw new Error("Invalid Instagram reel URL format");
-      }
-
-      const normalizedUrl = `https://www.instagram.com/reel/${reelId}/`;
-      console.log("Normalized URL:", normalizedUrl);
-
-      const client = new ApifyClient({
-        token: process.env.NEXT_PUBLIC_APIFY_API_TOKEN,
-      });
-
-      const input = {
-        directUrls: [normalizedUrl],
-        resultsLimit: 1,
-        proxy: {
-          useApifyProxy: true,
+      const response = await fetch("/api/instagram", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        maxRequestRetries: 3,
-        fields: [
-          "likesCount",
-          "commentsCount",
-          "videoPlayCount",
-          "timestamp",
-          "type",
-          "caption",
-          "comments",
-        ],
-      };
-
-      const run = await client.actor("apify/instagram-scraper").call(input, {
-        memory: 256,
-        timeout: 60,
+        body: JSON.stringify({ reelUrl }),
       });
 
-      const { items } = await client.dataset(run.defaultDatasetId).listItems();
+      const data = await response.json();
 
-      if (!items?.[0]) {
-        throw new Error("No data found for this reel");
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch reel metrics");
       }
 
-      const reelData = items[0] as unknown as ApifyReelData;
-      if (
-        !reelData.likesCount ||
-        !reelData.commentsCount ||
-        !reelData.videoPlayCount
-      ) {
-        throw new Error("Invalid reel data received");
-      }
-
-      console.log("Fetched reel data:", reelData);
-
-      const comments = reelData.comments || [];
-      console.log("Found comments:", comments);
-
-      setMetrics({
-        likes: reelData.likesCount || 0,
-        comments: reelData.commentsCount || 0,
-        views: reelData.videoPlayCount || 0,
-        timestamp: reelData.timestamp || new Date().toISOString(),
-        title: reelData.caption || "No caption available",
-        top_comments: comments.slice(0, 5).map((comment) => ({
-          text: comment.text || "",
-          author: comment.ownerUsername || "Unknown",
-          timestamp: comment.timestamp || new Date().toISOString(),
-          likes: comment.likesCount || 0,
-        })),
-      });
+      setMetrics(data);
     } catch (error) {
       console.error("Error fetching reel metrics:", error);
       setError(
