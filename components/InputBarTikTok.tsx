@@ -63,10 +63,18 @@ export default function InputBarTikTok() {
         body: JSON.stringify({ videoUrl }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error("Error parsing JSON response:", parseError);
+        throw new Error(
+          "Server returned an invalid response. Please try again later."
+        );
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch video data");
+        throw new Error(data?.error || "Failed to fetch video data");
       }
 
       setMetrics(data);

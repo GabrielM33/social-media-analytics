@@ -42,6 +42,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!process.env.NEXT_PUBLIC_APIFY_API_TOKEN) {
+      return NextResponse.json(
+        { error: "API configuration error. Please contact support." },
+        { status: 500 }
+      );
+    }
+
     // Prepare Actor inputs
     const metricsInput = {
       postURLs: [videoUrl],
@@ -58,17 +65,42 @@ export async function POST(request: Request) {
 
     let metricsRun, commentsRun;
     try {
+      console.log("Starting Apify actors with URL:", videoUrl);
       // Run both actors in parallel with timeout
       [metricsRun, commentsRun] = await Promise.all([
         client.actor("S5h7zRLfKFEr8pdj7").call(metricsInput),
         client.actor("BDec00yAmCm1QbMEI").call(commentsInput),
       ]);
+      console.log("Apify actors completed successfully");
     } catch (error) {
-      console.error("Error running Apify actors:", error);
+      console.error("Detailed Apify error:", {
+        error:
+          error instanceof Error
+            ? {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+              }
+            : error,
+        videoUrl,
+        apiToken: process.env.NEXT_PUBLIC_APIFY_API_TOKEN
+          ? "Present"
+          : "Missing",
+      });
       return NextResponse.json(
         {
           error:
-            "Failed to fetch TikTok data. The video might be private or unavailable.",
+            "Failed to fetch TikTok data. Please ensure the URL is in the correct format (e.g., https://www.tiktok.com/@username/video/1234567890).",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!metricsRun?.defaultDatasetId || !commentsRun?.defaultDatasetId) {
+      console.error("Invalid Apify run response:", { metricsRun, commentsRun });
+      return NextResponse.json(
+        {
+          error: "Invalid response from TikTok data service. Please try again.",
         },
         { status: 500 }
       );
