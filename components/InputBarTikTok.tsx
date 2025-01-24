@@ -63,16 +63,21 @@ export default function InputBarTikTok() {
         body: JSON.stringify({ videoUrl }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch video data");
+        throw new Error(data.error || "Failed to fetch video data");
       }
 
-      const data = await response.json();
       setMetrics(data);
     } catch (err) {
       console.error("Error fetching TikTok data:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch data");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to fetch data. Please check if the URL is correct and try again."
+      );
+      setMetrics(null);
     } finally {
       setLoading(false);
     }
@@ -92,9 +97,14 @@ export default function InputBarTikTok() {
           placeholder="Enter TikTok video URL"
           value={videoUrl}
           onChange={(e) => setVideoUrl(e.target.value)}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              handleFetch();
+            }
+          }}
         />
         <Button onClick={handleFetch} disabled={loading || !videoUrl}>
-          Confirm
+          {loading ? "Loading..." : "Confirm"}
         </Button>
       </div>
 
@@ -104,7 +114,12 @@ export default function InputBarTikTok() {
         </div>
       )}
 
-      {error && <div className="text-red-500 p-4">{error}</div>}
+      {error && (
+        <div className="text-red-500 p-4 text-center bg-red-50 rounded-md">
+          {error}
+        </div>
+      )}
+
       {metrics && (
         <Card className="w-full max-w-3xl mx-auto">
           <CardHeader>
