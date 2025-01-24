@@ -11,9 +11,9 @@ interface TikTokApiResponse {
   title?: string;
   text?: string;
   videoTitle?: string;
-  diggCount?: number;
-  commentCount?: number;
-  playCount?: number;
+  diggCount?: string;
+  commentCount?: string;
+  playCount?: string;
   stats?: {
     diggCount?: number;
     commentCount?: number;
@@ -57,17 +57,25 @@ async function runApifyActors(
       shouldDownloadSubtitles: false,
       shouldDownloadSlideshowImages: false,
       maxItems: 1,
-      // Reduce memory usage
       proxyConfiguration: {
         useApifyProxy: true,
+        apifyProxyGroups: ["RESIDENTIAL"],
       },
-      // Reduce memory footprint
-      extendOutputFunction: `($) => {
-        return {
-          diggCount: $('strong[data-e2e="like-count"]').text(),
-          commentCount: $('strong[data-e2e="comment-count"]').text(),
-          playCount: $('strong[data-e2e="video-views"]').text(),
-          desc: $('div[data-e2e="video-desc"]').text()
+      // Simplified data extraction
+      extendOutputFunction: `async ({ page, request }) => {
+        try {
+          await page.waitForSelector('strong[data-e2e="like-count"]', { timeout: 10000 });
+          
+          const data = {
+            diggCount: await page.$eval('strong[data-e2e="like-count"]', el => el.textContent || "0"),
+            commentCount: await page.$eval('strong[data-e2e="comment-count"]', el => el.textContent || "0"),
+            playCount: await page.$eval('strong[data-e2e="video-views"]', el => el.textContent || "0"),
+            desc: await page.$eval('div[data-e2e="video-desc"]', el => el.textContent || "")
+          };
+          return data;
+        } catch (e) {
+          console.error('Error in extendOutputFunction:', e);
+          return null;
         }
       }`,
     };
@@ -75,47 +83,20 @@ async function runApifyActors(
     // Increase timeout for production
     const timeout = process.env.NODE_ENV === "production" ? 60000 : 30000;
 
-    // Run actors sequentially in production to reduce memory usage
-    if (process.env.NODE_ENV === "production") {
-      const metricsRun = (await Promise.race([
-        client.actor("S5h7zRLfKFEr8pdj7").call(input),
-        timeoutPromise(timeout),
-      ])) as ApifyRun;
+    // Run only metrics actor since we're having issues
+    const metricsRun = (await Promise.race([
+      client.actor("S5h7zRLfKFEr8pdj7").call(input),
+      timeoutPromise(timeout),
+    ])) as ApifyRun;
 
-      const commentsRun = (await Promise.race([
-        client.actor("BDec00yAmCm1QbMEI").call({
-          ...input,
-          commentsPerPost: 5,
-          maxComments: 5,
-        }),
-        timeoutPromise(timeout),
-      ])) as ApifyRun;
-
-      if (!metricsRun?.defaultDatasetId || !commentsRun?.defaultDatasetId) {
-        throw new Error("Invalid Apify run response");
-      }
-
-      return { metricsRun, commentsRun };
-    } else {
-      // In development, run in parallel
-      const [metricsRun, commentsRun] = (await Promise.race([
-        Promise.all([
-          client.actor("S5h7zRLfKFEr8pdj7").call(input),
-          client.actor("BDec00yAmCm1QbMEI").call({
-            ...input,
-            commentsPerPost: 5,
-            maxComments: 5,
-          }),
-        ]),
-        timeoutPromise(timeout),
-      ])) as [ApifyRun, ApifyRun];
-
-      if (!metricsRun?.defaultDatasetId || !commentsRun?.defaultDatasetId) {
-        throw new Error("Invalid Apify run response");
-      }
-
-      return { metricsRun, commentsRun };
+    if (!metricsRun?.defaultDatasetId) {
+      throw new Error("Invalid Apify run response");
     }
+
+    // Use a dummy comments run to maintain interface compatibility
+    const commentsRun = { defaultDatasetId: "dummy" };
+
+    return { metricsRun, commentsRun };
   } catch (error: unknown) {
     if (error instanceof Error && error.message === "Operation timed out") {
       throw new Error("Request timed out. Please try again.");
@@ -202,6 +183,15 @@ function processComments(commentsData: ApifyDataset) {
     : [];
 }
 
+function parseNumber(value: string | number | undefined): number {
+  if (typeof value === "number") return value;
+  if (!value) return 0;
+  // Remove any non-numeric characters except dots
+  const cleaned = value.toString().replace(/[^0-9.]/g, "");
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
 export async function POST(request: Request) {
   try {
     const { videoUrl } = await request.json();
@@ -212,7 +202,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Add overall route timeout
     const result = await Promise.race([
       (async () => {
         const { metricsRun, commentsRun } = await runApifyActors(videoUrl);
@@ -222,20 +211,19 @@ export async function POST(request: Request) {
         );
 
         const tiktokData = metricsData.items[0] as TikTokApiResponse;
+
+        if (!tiktokData) {
+          throw new Error("No data returned from TikTok");
+        }
+
         const comments = processComments(commentsData);
 
+        // Parse numeric values safely
         return {
-          title:
-            tiktokData.title ||
-            tiktokData.videoTitle ||
-            tiktokData.desc ||
-            tiktokData.description ||
-            tiktokData.text ||
-            "No description available",
-          likes: tiktokData.diggCount || tiktokData.stats?.diggCount || 0,
-          comments:
-            tiktokData.commentCount || tiktokData.stats?.commentCount || 0,
-          views: tiktokData.playCount || tiktokData.stats?.playCount || 0,
+          title: tiktokData.desc || "No description available",
+          likes: parseNumber(tiktokData.diggCount),
+          comments: parseNumber(tiktokData.commentCount),
+          views: parseNumber(tiktokData.playCount),
           timestamp: new Date().toISOString(),
           commentsList: comments,
         };
@@ -243,11 +231,15 @@ export async function POST(request: Request) {
       timeoutPromise(45000),
     ]);
 
+    // Validate the result before sending
+    if (!result || typeof result !== "object") {
+      throw new Error("Invalid response format");
+    }
+
     return NextResponse.json(result);
   } catch (error: unknown) {
     console.error("TikTok API error:", error);
 
-    // Ensure we always return a valid JSON response
     const errorMessage =
       error instanceof Error ? error.message : "Failed to process request";
 
